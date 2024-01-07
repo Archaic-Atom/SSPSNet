@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import argparse
 import JackFramework as jf
-# import UserModelImplementation.user_define as user_def
+import UserModelImplementation.user_define as user_def
 
 # model and dataloader
 from UserModelImplementation import Models
@@ -20,10 +20,14 @@ class UserInterface(jf.UserTemplate.NetWorkInferenceTemplate):
         return model, dataloader
 
     def user_parser(self, parser: object) -> object:
-        # parser.add_argument('--startDisp', type=int, default=user_def.START_DISP,
-        #                    help='start disparity')
-        # return parser
-        return None
+        parser.add_argument('--start_disp', type=int, default=user_def.START_DISP,
+                            help='start disparity')
+        parser.add_argument('--disp_num', type=int, default=user_def.DISP_NUM,
+                            help='disparity number')
+        parser.add_argument('--lr_scheduler', type=UserInterface.__str2bool,
+                            default=user_def.LR_SCHEDULER,
+                            help='use or not use lr scheduler')
+        return parser
 
     @staticmethod
     def __str2bool(arg: str) -> bool:

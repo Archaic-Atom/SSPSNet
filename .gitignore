@@ -7,4 +7,6 @@ Result*/
 /*__pycache__*/
 sftp-config*.json
 *.pyc
+
+*.sublime-workspace
 STTStereo.sublime-workspace

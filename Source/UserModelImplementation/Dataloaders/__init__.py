@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 import JackFramework as jf
+from .stereo_dataloader import StereoDataloader
 
-from .your_dataloader import YourDataloader
+
+def _get_dataloaders_dict() -> dict:
+    return {'sceneflow': StereoDataloader, 'kitti2012': StereoDataloader,
+            'kitti2015': StereoDataloader, 'crestereo': StereoDataloader,
+            'eth3d': StereoDataloader, 'rob': StereoDataloader,
+            'middlebury': StereoDataloader, 'US3D': StereoDataloader,
+            'whu': StereoDataloader}
 
 
-def dataloaders_zoo(args: object, name: str) -> object:
-    for case in jf.Switch(name):
-        if case('YourDataloader'):
-            jf.log.info("Enter the your dataloader")
-            dataloader = YourDataloader(args)
-            break
-        if case(''):
-            dataloader = None
-            jf.log.error("The dataloader's name is error!!!")
-    return dataloader
+def dataloaders_zoo(args: object, dataset_name: str) -> object:
+    dataloader_dict = _get_dataloaders_dict()
+    assert dataset_name in dataloader_dict
+    return dataloader_dict[dataset_name](args)
