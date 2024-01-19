@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 # import torch.nn as nn
-# import torch.nn.functional as F
-
 import math
 import torch
 import torch.optim as optim
+import torch.nn.functional as F
 
 import JackFramework as jf
+
 import UserModelImplementation.user_define as user_def
+from .Networks import GANet
 
 
 class SAStereoInterface(jf.UserTemplate.ModelHandlerTemplate):
@@ -27,14 +28,14 @@ class SAStereoInterface(jf.UserTemplate.ModelHandlerTemplate):
                 else 0.5 * (1.0 + math.cos(math.pi * (epoch - warmup_epochs) / cos_epoch)))
 
     def get_model(self) -> list:
-        # args = self.__args
+        args = self.__args
         # return model
-        return []
+        model = GANet(args.disp_num)
+        return [model]
 
     def optimizer(self, model: list, lr: float) -> list:
         args = self.__args
-        opt = torch.optim.AdamW(
-            model[self.ID_MODEL].parameters(), lr=lr, betas=(0.9, 0.95), weight_decay=0.05)
+        opt = optim.Adam(model[self.ID_MODEL].parameters(), lr=lr, betas=(0.9, 0.999))
 
         if args.lr_scheduler:
             sch = optim.lr_scheduler.LambdaLR(opt, lr_lambda=self.lr_lambda)
@@ -50,19 +51,22 @@ class SAStereoInterface(jf.UserTemplate.ModelHandlerTemplate):
     def inference(self, model: list, input_data: list, model_id: int) -> list:
         # args = self.__args
         # return output
-
-        return []
+        if self.ID_MODEL == model_id:
+            outputs = jf.Tools.convert2list(
+                model(input_data[self.ID_LEFT_IMG],
+                      input_data[self.ID_RIGHT_IMG]))
+        return outputs
 
     def accuracy(self, output_data: list, label_data: list, model_id: int) -> list:
         # return acc
         # args = self.__args
         args, res, id_three_px = self.__args, [], 1
 
-        if self.MODEL_ID == model_id:
+        if self.ID_MODEL == model_id:
             gt_left = label_data[0]
             mask = (gt_left < args.start_disp + args.disp_num) & (gt_left > args.start_disp)
             for _, item in enumerate(output_data):
-                disp = item[:, 0, :, :]
+                disp = item
                 if len(disp.shape) == 3:
                     acc, mae = jf.acc.SMAccuracy.d_1(disp, gt_left * mask, invalid_value=0)
                     res.extend((acc[id_three_px], mae))
@@ -70,8 +74,15 @@ class SAStereoInterface(jf.UserTemplate.ModelHandlerTemplate):
 
     def loss(self, output_data: list, label_data: list, model_id: int) -> list:
         # return loss
-        # args = self.__args
-        return []
+        args = self.__args
+        if self.ID_MODEL == model_id:
+            gt_left = label_data[0]
+            mask = (gt_left < args.start_disp + args.disp_num) & (gt_left > args.start_disp)
+
+            loss = 0.2 * F.smooth_l1_loss(output_data[0][mask], gt_left[mask], reduction='mean') +\
+                0.6 * F.smooth_l1_loss(output_data[1][mask], gt_left[mask], reduction='mean') +\
+                F.smooth_l1_loss(output_data[2][mask], gt_left[mask], reduction='mean')
+        return [loss]
 
     # Optional
     def pretreatment(self, epoch: int, rank: object) -> None:

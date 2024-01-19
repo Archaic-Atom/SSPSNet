@@ -1,3 +1,4 @@
+# foloder
 ResultImg/
 Submission/
 Checkpoint/
@@ -5,8 +6,11 @@ log/
 Example/
 Result*/
 /*__pycache__*/
-sftp-config*.json
-*.pyc
 
+# user file
+sftp-config*.json
 *.sublime-workspace
-STTStereo.sublime-workspace
+
+# tmp file
+*.pyc
+*.DS_Store
