@@ -27,6 +27,9 @@ class UserInterface(jf.UserTemplate.NetWorkInferenceTemplate):
         parser.add_argument('--lr_scheduler', type=UserInterface.__str2bool,
                             default=user_def.LR_SCHEDULER,
                             help='use or not use lr scheduler')
+        parser.add_argument('--pre_train_opt', type=UserInterface.__str2bool,
+                            default=user_def.PRE_TRAIN_OPT,
+                            help='pre-trained option')
         return parser
 
     @staticmethod
