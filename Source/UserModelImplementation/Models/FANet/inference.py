@@ -8,10 +8,13 @@ import torch.nn.functional as F
 import JackFramework as jf
 
 import UserModelImplementation.user_define as user_def
+
+from .Networks import FANet
+from ._loss import Loss
 from ._accuracy import Accuracy
 
 
-class SAStereoInterface(jf.UserTemplate.ModelHandlerTemplate):
+class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
     """docstring for DeepLabV3Plus"""
     ID_MODEL = 0
     ID_LEFT_DISP_GT = 0
@@ -21,6 +24,7 @@ class SAStereoInterface(jf.UserTemplate.ModelHandlerTemplate):
         super().__init__(args)
         self.__args = args
         self._acc = Accuracy(args)
+        self._loss = Loss(args)
 
     @staticmethod
     def lr_lambda(epoch: int) -> float:
@@ -32,7 +36,7 @@ class SAStereoInterface(jf.UserTemplate.ModelHandlerTemplate):
     def get_model(self) -> list:
         args = self.__args
         # return model
-        model = GANet(args.disp_num)
+        model = FANet(3, args.start_disp, args.disp_num, args.pre_train_opt)
         return [model]
 
     def optimizer(self, model: list, lr: float) -> list:
@@ -59,32 +63,45 @@ class SAStereoInterface(jf.UserTemplate.ModelHandlerTemplate):
         return outputs
 
     def accuracy(self, output_data: list, label_data: list, model_id: int) -> list:
-        # return acc
-        # args = self.__args
-        _, res, id_three_px = self.__args, None, 1
+        args, acc, id_three_px = self.__args, None, 1
 
         if self.ID_MODEL == model_id:
             left_img_disp = label_data[self.ID_LEFT_DISP_GT]
             mask = self._get_mask(left_img_disp)
-            res = self._acc.matching_accuracy(
-                output_data, left_img_disp * mask, id_three_px)
 
-        return res
+            if args.pre_train_opt:
+                acc = self._acc.feature_alignment_accuracy(
+                    output_data[self.ID_LEFT_IMG],
+                    output_data[self.ID_RIGHT_IMG],
+                    left_img_disp, mask)
+            else:
+                acc = self._acc.matching_accuracy(
+                    output_data, left_img_disp * mask, id_three_px)
+        return acc
 
     def loss(self, output_data: list, label_data: list, model_id: int) -> list:
         # return loss
-        args, loss = self.__args, None
+        args, loss, id_three_px = self.__args, None, 1
         if self.ID_MODEL == model_id:
             left_img_disp = label_data[self.ID_LEFT_DISP_GT]
+            mask = self._get_mask(left_img_disp)
 
-        return [loss]
+            if args.pre_train_opt:
+                loss = self._loss.feature_alignment_loss(
+                    output_data[self.ID_LEFT_IMG],
+                    output_data[self.ID_RIGHT_IMG],
+                    left_img_disp, mask)
+            else:
+                loss = self._acc.matching_accuracy(
+                    output_data, left_img_disp * mask, id_three_px)
+
+        return loss
 
     def _get_mask(self, left_img_disp: torch.Tensor) -> torch.Tensor:
         args = self.__args
         return (left_img_disp < args.start_disp + args.disp_num) & (left_img_disp > args.start_disp)
 
     # Optional
-
     def pretreatment(self, epoch: int, rank: object) -> None:
         # do something before training epoch
         pass

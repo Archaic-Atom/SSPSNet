@@ -13,10 +13,10 @@ if [ -d "${tensorboard_folder}" ]; then
 fi
 
 echo "Begin to train the model!"
-CUDA_VISIBLE_DEVICES=4,5,6,7 nohup python -u Source/main.py \
+CUDA_VISIBLE_DEVICES=0,1 nohup python -u Source/main.py \
                         --mode train \
-                        --batchSize 12 \
-                        --gpu 4 \
+                        --batchSize 6 \
+                        --gpu 2 \
                         --trainListPath ./Datasets/sceneflow_stereo_training_list.csv \
                         --imgWidth 528 \
                         --imgHeight 240 \
@@ -27,7 +27,7 @@ CUDA_VISIBLE_DEVICES=4,5,6,7 nohup python -u Source/main.py \
                         --log ${tensorboard_folder} \
                         --lr 0.001 \
                         --dist False \
-                        --modelName SAStereo \
+                        --modelName FANet \
                         --port ${dist_port} \
                         --debug False \
                         --dataset sceneflow > TrainRun.log 2>&1 &
