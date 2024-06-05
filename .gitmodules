@@ -1,3 +1,9 @@
 [submodule "Source/Libs/apex"]
 	path = Source/Libs/apex
 	url = git@github.com:NVIDIA/apex.git
+[submodule "Source/Libs/causal-conv1d"]
+	path = Source/Libs/causal-conv1d
+	url = https://github.com/Dao-AILab/causal-conv1d.git
+[submodule "Source/Libs/dinov2"]
+	path = Source/Libs/dinov2
+	url = git@github.com:facebookresearch/dinov2.git

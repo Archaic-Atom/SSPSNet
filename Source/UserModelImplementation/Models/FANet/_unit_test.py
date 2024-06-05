@@ -86,6 +86,10 @@ class UnitTest(object):
         loss = torch.mean(torch.sum(torch.abs(left_img - warped_right_img), dim=1, keepdim=True) * mask)
         print(loss, loss.shape)
 
+        cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+        output = torch.mean(cos(left_img, warped_right_img) * mask)
+        print(output, output.shape, mask.shape)
+
 
 def main() -> None:
     unit_test = UnitTest()

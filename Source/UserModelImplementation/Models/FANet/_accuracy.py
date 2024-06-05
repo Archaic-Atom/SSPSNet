@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import torch
 import torch.nn.functional as F
+from torch import nn
 import JackFramework as jf
 
 try:
@@ -12,11 +13,13 @@ except ImportError:
 class Accuracy(object):
     DISP_DIM_LEN = 3
     ID_CHANNEL = 1
+    EPS = 1e-6
 
     def __init__(self, args: object) -> None:
         super().__init__()
         self.__arg = args
         self._warp = Warp()
+        self._cos = nn.CosineSimilarity(dim=self.ID_CHANNEL, eps=self.EPS)
 
     def matching_accuracy(self, disp_list: list, disp_label: torch.Tensor,
                           id_error_px: int = 1, invalid_value: int = 0) -> list:
@@ -41,4 +44,5 @@ class Accuracy(object):
         mask = mask_disp.float() * mask_occ
 
         return [torch.mean(torch.sum(torch.abs(left_feat - warped_right_img),
-                dim=self.ID_CHANNEL, keepdim=True) * mask)]
+                dim=self.ID_CHANNEL, keepdim=True) * mask),
+                torch.mean(self._cos(left_feat, warped_right_img) * mask)]

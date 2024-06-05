@@ -14,7 +14,7 @@ except ImportError:
 
 
 class Loss(object):
-    DISP_DIM_LEN = 3
+    DISP_DIM_LEN, GROUPED_NUM = 3, 8
     ID_CHANNEL = 1
 
     def __init__(self, args: object) -> None:
@@ -46,7 +46,7 @@ class Loss(object):
         args = self.__arg
         cost = build_gwc_volume(left_feat, right_feat, args.start_disp, args.disp_num, 8)
         cost = torch.mean(cost, dim=self.ID_CHANNEL, keepdim=False)
-        disp = self._disp_regression(cost)
+        disp = self._disp_regression(-cost)
         return F.smooth_l1_loss(disp[mask_disp.unsqueeze(1)], disp_label[mask_disp.unsqueeze(1)])
 
     def feature_alignment_loss(self, left_feat: torch.Tensor, right_feat: torch.Tensor,

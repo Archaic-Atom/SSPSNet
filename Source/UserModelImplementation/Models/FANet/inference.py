@@ -74,6 +74,7 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
                     output_data[self.ID_LEFT_IMG],
                     output_data[self.ID_RIGHT_IMG],
                     left_img_disp, mask)
+                print(output_data[self.ID_LEFT_IMG], output_data[self.ID_RIGHT_IMG])
             else:
                 acc = self._acc.matching_accuracy(
                     output_data, left_img_disp * mask, id_three_px)
@@ -115,12 +116,14 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
     # Optional
     def load_model(self, model: object, checkpoint: dict, model_id: int) -> bool:
         # return False
-        return False
+        model.load_state_dict(checkpoint['model_0'], strict=False)
+        jf.log.info("Model loaded successfully_add")
+        return True
 
     # Optional
     def load_opt(self, opt: object, checkpoint: dict, model_id: int) -> bool:
         # return False
-        return False
+        return True
 
     # Optional
     def save_model(self, epoch: int, model_list: list, opt_list: list) -> dict:
