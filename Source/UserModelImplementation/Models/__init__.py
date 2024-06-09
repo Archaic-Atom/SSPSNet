@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*
 import JackFramework as jf
-
-from .SAStereo.inference import SAStereoInterface
+from .SAStereo import SAStereoInterface
+from .FANet import FANetInterface
 
 
 def _get_model_dict() -> dict:
-    return {'SAStereo': SAStereoInterface, }
+    return {'SAStereo': SAStereoInterface,
+            'FANet': FANetInterface, }
 
 
 def model_zoo(args: object, model_name: str) -> object:

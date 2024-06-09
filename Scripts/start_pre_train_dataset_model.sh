@@ -13,14 +13,14 @@ if [ -d "${tensorboard_folder}" ]; then
 fi
 
 echo "Begin to train the model!"
-CUDA_VISIBLE_DEVICES=0,1 nohup python -u Source/main.py \
+CUDA_VISIBLE_DEVICES=0 nohup python -u Source/main.py \
                         --mode train \
-                        --batchSize 2 \
-                        --gpu 2 \
-                        --trainListPath ./Datasets/sceneflow_stereo_val_list.csv \
-                        --valListPath ./Datasets/sceneflow_stereo_val_list.csv \
-                        --imgWidth 560 \
-                        --imgHeight 280 \
+                        --batchSize 4 \
+                        --gpu 1 \
+                        --trainListPath ./Datasets/sceneflow_stereo_training_list.csv \
+                        --valListPath ./Datasets/sceneflow_stereo_training_list.csv \
+                        --imgWidth 528 \
+                        --imgHeight 288 \
                         --dataloaderNum 24 \
                         --maxEpochs 200 \
                         --imgNum 35454 \
@@ -33,7 +33,6 @@ CUDA_VISIBLE_DEVICES=0,1 nohup python -u Source/main.py \
                         --port ${dist_port} \
                         --modelDir ./Checkpoint/ \
                         --debug False \
-                        --auto_save_num 1 \
                         --dataset sceneflow > TrainRun.log 2>&1 &
 echo "You can use the command (>> tail -f TrainRun.log) to watch the training process!"
 

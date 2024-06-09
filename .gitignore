@@ -6,10 +6,12 @@ log/
 Example/
 Result*/
 /*__pycache__*/
+Tmp/
 
 # user file
 sftp-config*.json
 *.sublime-workspace
+*.sublime-project
 
 # tmp file
 *.pyc

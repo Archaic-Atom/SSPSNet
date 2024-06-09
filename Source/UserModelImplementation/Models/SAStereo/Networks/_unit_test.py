@@ -19,6 +19,7 @@ class UnitTest(object):
         range_list = torch.from_numpy(np.array([[0, 1]]))
         print(range_list.shape)
         model = GANet(192).cuda()
+        print(model)
         num_params = sum(param.numel() for param in model.parameters())
         print(num_params)
 
