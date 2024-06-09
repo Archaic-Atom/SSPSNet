@@ -41,13 +41,25 @@ class Loss(object):
         return torch.mean(torch.sum(torch.abs(left_feat - warped_right_img),
                                     dim=self.ID_CHANNEL, keepdim=True) * mask)
 
-    def _matching_loss(self, left_feat: torch.Tensor, right_feat: torch.Tensor,
-                       disp_label: torch.Tensor, mask_disp: torch.Tensor) -> None:
+    def _feature_matching_loss(self, left_feat: torch.Tensor, right_feat: torch.Tensor,
+                               disp_label: torch.Tensor, mask_disp: torch.Tensor) -> None:
         args = self.__arg
         cost = build_gwc_volume(left_feat, right_feat, args.start_disp, args.disp_num, 8)
         cost = torch.mean(cost, dim=self.ID_CHANNEL, keepdim=False)
         disp = self._disp_regression(-cost)
         return F.smooth_l1_loss(disp[mask_disp.unsqueeze(1)], disp_label[mask_disp.unsqueeze(1)])
+
+    def matching_loss(self, disp_list: list, disp_label: torch.Tensor,
+                      mask_disp: torch.Tensor) -> torch.Tensor:
+        res = None
+        for i, disp in enumerate(disp_list):
+            if i == 0:
+                res = F.smooth_l1_loss(
+                    torch.squeeze(disp, 1)[mask_disp], disp_label[mask_disp])
+            else:
+                res += F.smooth_l1_loss(
+                    torch.squeeze(disp, 1)[mask_disp], disp_label[mask_disp])
+        return [res]
 
     def feature_alignment_loss(self, left_feat: torch.Tensor, right_feat: torch.Tensor,
                                disp_label: torch.Tensor, mask_disp: torch.Tensor) -> list:
@@ -59,6 +71,6 @@ class Loss(object):
         right_feat = F.interpolate(right_feat, [h, w], mode = 'bilinear', align_corners = False)
 
         alignment_loss = self._alignment_loss(left_feat, right_feat, disp_label, mask_disp)
-        matching_loss = self._matching_loss(left_feat, right_feat, disp_label, mask_disp)
+        matching_loss = self._feature_matching_loss(left_feat, right_feat, disp_label, mask_disp)
 
         return [alignment_loss + matching_loss, alignment_loss, matching_loss]

@@ -3,9 +3,12 @@
 import math
 import torch
 import torch.optim as optim
+from torch import nn
 import torch.nn.functional as F
+from functools import partial
 
 import JackFramework as jf
+
 
 import UserModelImplementation.user_define as user_def
 
@@ -36,7 +39,12 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
     def get_model(self) -> list:
         args = self.__args
         # return model
-        model = FANet(3, args.start_disp, args.disp_num, args.pre_train_opt)
+        model = FANet(3, args.start_disp, args.disp_num, 'dinov2', args.pre_train_opt)
+
+        if not args.pre_train_opt:
+            for name, param in model.named_parameters():
+                if "feature_extraction" in name:
+                    param.requires_grad = False
         return [model]
 
     def optimizer(self, model: list, lr: float) -> list:
@@ -54,7 +62,7 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
         if self.ID_MODEL == sch_id:
             sch.step()
 
-    def inference(self, model: list, input_data: list, model_id: int) -> list:
+    def inference(self, model: nn.Module, input_data: list, model_id: int) -> list:
         # args = self.__args
         # return output
         if self.ID_MODEL == model_id:
@@ -74,7 +82,6 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
                     output_data[self.ID_LEFT_IMG],
                     output_data[self.ID_RIGHT_IMG],
                     left_img_disp, mask)
-                print(output_data[self.ID_LEFT_IMG], output_data[self.ID_RIGHT_IMG])
             else:
                 acc = self._acc.matching_accuracy(
                     output_data, left_img_disp * mask, id_three_px)
@@ -93,9 +100,8 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
                     output_data[self.ID_RIGHT_IMG],
                     left_img_disp, mask)
             else:
-                loss = self._acc.matching_accuracy(
-                    output_data, left_img_disp * mask, id_three_px)
-
+                loss = self._loss.matching_loss(
+                    output_data, left_img_disp, mask)
         return loss
 
     def _get_mask(self, left_img_disp: torch.Tensor) -> torch.Tensor:
@@ -116,9 +122,9 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
     # Optional
     def load_model(self, model: object, checkpoint: dict, model_id: int) -> bool:
         # return False
-        model.load_state_dict(checkpoint['model_0'], strict=False)
-        jf.log.info("Model loaded successfully_add")
-        return True
+        # model.load_state_dict(checkpoint['model_0'], strict=False)
+        # jf.log.info("Model loaded successfully_add")
+        return False
 
     # Optional
     def load_opt(self, opt: object, checkpoint: dict, model_id: int) -> bool:

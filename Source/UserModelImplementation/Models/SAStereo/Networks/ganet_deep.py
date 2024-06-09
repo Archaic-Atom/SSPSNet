@@ -6,21 +6,19 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
 
+import apex
 
 try:
     import sys
     import os
     sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../'))
+    # from Libs.sync_bn.modules.sync_bn import BatchNorm2d, BatchNorm3d
+    from Libs.GANet.modules.GANet import LGA, LGA2, LGA3
+    from Libs.GANet.modules.GANet import SGA
+    from Libs.GANet.modules.GANet import MyNormalize
+    from Libs.GANet.modules.GANet import DisparityRegression, GetCostVolume
 except ImportError:
     pass
-
-
-# from Libs.sync_bn.modules.sync_bn import BatchNorm2d, BatchNorm3d
-import apex
-from Libs.GANet.modules.GANet import LGA, LGA2, LGA3
-from Libs.GANet.modules.GANet import SGA
-from Libs.GANet.modules.GANet import MyNormalize
-from Libs.GANet.modules.GANet import DisparityRegression, GetCostVolume
 
 
 class BasicConv(nn.Module):

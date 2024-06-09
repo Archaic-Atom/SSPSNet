@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # --------------------------------------------------------
 # EVA-02: A Visual Representation for Neon Genesis
 # Github source: https://github.com/baaivision/EVA/EVA02
@@ -14,7 +15,6 @@ import torch
 from torch import nn
 
 from einops import rearrange, repeat
-
 
 
 def broadcat(tensors, dim = -1):
@@ -34,13 +34,11 @@ def broadcat(tensors, dim = -1):
     return torch.cat(tensors, dim = dim)
 
 
-
 def rotate_half(x):
     x = rearrange(x, '... (d r) -> ... d r', r = 2)
     x1, x2 = x.unbind(dim = -1)
     x = torch.stack((-x2, x1), dim = -1)
     return rearrange(x, '... d r -> ... (d r)')
-
 
 
 class VisionRotaryEmbedding(nn.Module):
@@ -67,7 +65,8 @@ class VisionRotaryEmbedding(nn.Module):
         else:
             raise ValueError(f'unknown modality {freqs_for}')
 
-        if ft_seq_len is None: ft_seq_len = pt_seq_len
+        if ft_seq_len is None:
+            ft_seq_len = pt_seq_len
         t = torch.arange(ft_seq_len) / ft_seq_len * pt_seq_len
 
         freqs_h = torch.einsum('..., f -> ... f', t, freqs)
@@ -90,7 +89,6 @@ class VisionRotaryEmbedding(nn.Module):
         t_left, t, t_right = t[..., :start_index], t[..., start_index:end_index], t[..., end_index:]
         t = (t * self.freqs_cos) + (rotate_half(t) * self.freqs_sin)
         return torch.cat((t_left, t, t_right), dim = -1)
-
 
 
 class VisionRotaryEmbeddingFast(nn.Module):
@@ -117,7 +115,8 @@ class VisionRotaryEmbeddingFast(nn.Module):
         else:
             raise ValueError(f'unknown modality {freqs_for}')
 
-        if ft_seq_len is None: ft_seq_len = pt_seq_len
+        if ft_seq_len is None:
+            ft_seq_len = pt_seq_len
         t = torch.arange(ft_seq_len) / ft_seq_len * pt_seq_len
 
         freqs = torch.einsum('..., f -> ... f', t, freqs)
@@ -132,10 +131,10 @@ class VisionRotaryEmbeddingFast(nn.Module):
 
         print('======== shape of rope freq', self.freqs_cos.shape, '========')
 
-    def forward(self, t): 
+    def forward(self, t):
         if t.shape[1] % 2 != 0:
             t_spatial = t[:, 1:, :]
             t_spatial = t_spatial * self.freqs_cos + rotate_half(t_spatial) * self.freqs_sin
             return torch.cat((t[:, :1, :], t_spatial), dim=1)
         else:
-            return  t * self.freqs_cos + rotate_half(t) * self.freqs_sin
+            return t * self.freqs_cos + rotate_half(t) * self.freqs_sin
