@@ -39,7 +39,7 @@ def build_model_from_cfg(cfg, only_teacher=False):
     return build_model(cfg.student, only_teacher=only_teacher, img_size=cfg.crops.global_crops_size)
 
 
-def build_matching_module(in_chans):
+def build_vit_matching_module(in_chans):
     vit = vits.vit_small(patch_size=1, in_chans=in_chans)
     vit.forward = partial(
         vit.get_intermediate_layers,

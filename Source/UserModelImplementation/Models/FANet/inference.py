@@ -49,7 +49,8 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
 
     def optimizer(self, model: list, lr: float) -> list:
         args = self.__args
-        opt = optim.Adam(model[self.ID_MODEL].parameters(), lr=lr, betas=(0.9, 0.999))
+        # opt = optim.Adam(model[self.ID_MODEL].parameters(), lr=lr, betas=(0.9, 0.999))
+        opt = optim.AdamW(model[self.ID_MODEL].parameters(), lr=lr, weight_decay=1e-4)
 
         if args.lr_scheduler:
             sch = optim.lr_scheduler.LambdaLR(opt, lr_lambda=self.lr_lambda)

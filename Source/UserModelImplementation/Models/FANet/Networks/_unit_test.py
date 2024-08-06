@@ -6,13 +6,13 @@ import torch
 try:
     sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../'))
     from .Mamba import vim_small_patch16_stride8_224_bimambav2_final_pool_mean_abs_pos_embed_with_midclstok_div2
-    from .Transformer import build_matching_module
+    from .Transformer import build_vit_matching_module
     from .model import FANet
     from Libs.dinov2.dinov2.hub.depthers import dinov2_vitl14_dd
 except ImportError:
     sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../'))
     from Mamba import vim_small_patch16_stride8_224_bimambav2_final_pool_mean_abs_pos_embed_with_midclstok_div2
-    from Transformer import build_matching_module
+    from Transformer import build_vit_matching_module
     from model import FANet
     from Libs.dinov2.dinov2.hub.depthers import dinov2_vitl14_dd
 
@@ -28,7 +28,8 @@ class UnitTest(object):
         res = model(left_img, return_features=True)
         print(res.shape)
 
-    def _dinov2_test(self) -> None:
+    def _dinov3_test(self) -> None:
+        print("Hello")
         left_img = torch.rand(2, 3, 448, 224).cuda()
         right_img = torch.rand(2, 3, 448, 224).cuda()
         dinov2_vitg14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14').cuda()
@@ -43,15 +44,36 @@ class UnitTest(object):
         out = res[0]
         print(out.shape)
 
-        model = build_matching_module(384).cuda()
+        model = build_vit_matching_module(384).cuda()
 
         res = model(out)
         for i in res:
             print(i.shape)
 
+    def _dinov2_test(self) -> None:
+        left_img = torch.rand(2, 3, 448, 224).cuda()
+        right_img = torch.rand(2, 3, 448, 224).cuda()
+        print("Hello")
+
         model = FANet(3, 0, 192, 'dinov2', False).cuda()
-        for i in range(20):
+        for _ in range(20):
             res = model(left_img, right_img)
+            print(res.shape)
+
+    def _multi_gpu_test(self) -> None:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        left_img = torch.rand(2, 3, 448, 224).to(device)
+        right_img = torch.rand(2, 3, 448, 224).to(device)
+
+        # model = FSNet()
+        model = FANet(3, 0, 196, 'dinov2', False)
+
+        # model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
+        net = torch.nn.DataParallel(model).to(device)
+
+        for _ in range(20):
+            res = net(left_img, right_img)
+            # res = net(left_img)
             print(res.shape)
 
     def _depth_test(self) -> None:
@@ -62,7 +84,7 @@ class UnitTest(object):
             print(res.shape)
 
     def exec(self, args: object) -> None:
-        self._dinov2_test()
+        self._multi_gpu_test()
 
 
 def main() -> None:
