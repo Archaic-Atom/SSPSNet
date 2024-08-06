@@ -28,9 +28,7 @@ class FANet(nn.Module):
         super().__init__()
         self.start_disp, self.disp_num = start_disp, disp_num
         self._h, self._w = None, None
-        self.in_channles = in_channles
-        self.backbone = backbone
-        self.pre_train_opt = pre_train_opt
+        self.in_channles, self.backbone, self.pre_train_opt = in_channles, backbone, pre_train_opt
         self.feature_extraction = self._get_feature_extraction()
         self.matching_module = build_vit_matching_module(776)
         self.deonv_0, self.deonv_1, self.deonv_2 = self._get_decode_module()
@@ -40,11 +38,7 @@ class FANet(nn.Module):
         feature_extraction = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
         feature_extraction.forward = partial(
             feature_extraction.get_intermediate_layers,
-            n=1,
-            reshape=True,
-            return_class_token=False,
-            norm=False,
-        )
+            n=1, reshape=True, return_class_token=False, norm=False,)
         return feature_extraction
 
     def _get_feature_extraction(self) -> nn.Module:
@@ -54,11 +48,9 @@ class FANet(nn.Module):
 
     def _get_decode_module(self) -> nn.Module:
         deonv_1 = nn.Sequential(nn.Conv3d(192, 64, kernel_size=3, padding=1, stride=1, bias=False),
-                                nn.BatchNorm3d(64),
-                                nn.ReLU(inplace=True))
+                                nn.BatchNorm3d(64), nn.ReLU(inplace=True))
         deonv_2 = nn.Sequential(nn.Conv3d(64, 8, kernel_size=3, padding=1, stride=1, bias=False),
-                                nn.BatchNorm3d(8),
-                                nn.ReLU(inplace=True))
+                                nn.BatchNorm3d(8), nn.ReLU(inplace=True))
         deonv_3 = nn.Sequential(nn.Conv3d(8, 1, kernel_size=3, padding=1, stride=1, bias=False))
         return deonv_1, deonv_2, deonv_3
 
@@ -66,14 +58,13 @@ class FANet(nn.Module):
                                 right_img: torch.Tensor) -> torch.Tensor:
         return torch.cat((
             build_gwc_volume(left_img, right_img, self.start_disp, 14, self.GROUP_NUM),
-            build_cat_volume(left_img, right_img, self.start_disp, 14)),
-            dim=1)
+            build_cat_volume(left_img, right_img, self.start_disp, 14)), dim=1)
 
     def _up_sampling(self, cost: torch.Tensor, shape: list, decoder: nn.Module) -> torch.Tensor:
-        cost = F.interpolate(cost, shape, mode='trilinear', align_corners=True)
-        return decoder(cost)
+        return decoder(F.interpolate(cost, shape, mode='trilinear', align_corners=True))
 
-    def _feature_extraction_module_proc(self, left_img: torch.Tensor, right_img: torch.Tensor) -> tuple:
+    def _feature_extraction_module_proc(
+            self, left_img: torch.Tensor, right_img: torch.Tensor) -> tuple:
         left_img = self.feature_extraction.get_intermediate_layers(
             left_img, n=1, reshape=True, return_class_token=False, norm=False)[self.ID_FEAT]
         right_img = self.feature_extraction.get_intermediate_layers(
@@ -102,12 +93,7 @@ class FANet(nn.Module):
 
     def _mask_pre_train_proc(self, left_img: torch.Tensor,
                              right_img: torch.Tensor) -> torch.Tensor:
-        return [
-            self.feature_extraction.get_intermediate_layers(
-                left_img, n=1, reshape=True, return_class_token=False, norm=False)[self.ID_FEAT],
-            self.feature_extraction.get_intermediate_layers(
-                right_img, n=1, reshape=True, return_class_token=False, norm=False)[self.ID_FEAT]
-        ]
+        return list(self._feature_extraction_module_proc(left_img, right_img))
 
     def forward(self, left_img: torch.Tensor, right_img: torch.Tensor,
                 random_sample_list: torch.Tensor = None, flow_init=None) -> torch.Tensor:

@@ -66,7 +66,7 @@ class UnitTest(object):
         right_img = torch.rand(2, 3, 448, 224).to(device)
 
         # model = FSNet()
-        model = FANet(3, 0, 192, 'dinov2', False)
+        model = FANet(3, 0, 196, 'dinov2', False)
 
         # model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
         net = torch.nn.DataParallel(model).to(device)
