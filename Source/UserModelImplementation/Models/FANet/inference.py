@@ -91,6 +91,7 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
     def loss(self, output_data: list, label_data: list, model_id: int) -> list:
         # return loss
         args, loss, id_three_px = self.__args, None, 1
+
         if self.ID_MODEL == model_id:
             left_img_disp = label_data[self.ID_LEFT_DISP_GT]
             mask = self._get_mask(left_img_disp)

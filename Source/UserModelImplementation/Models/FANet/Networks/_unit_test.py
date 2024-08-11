@@ -2,6 +2,7 @@
 import os
 import sys
 import torch
+from torchsummary import summary
 
 try:
     sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../'))
@@ -62,16 +63,37 @@ class UnitTest(object):
 
     def _multi_gpu_test(self) -> None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        left_img = torch.rand(2, 3, 448, 224).to(device)
-        right_img = torch.rand(2, 3, 448, 224).to(device)
+        left_img = torch.rand(1, 3, 448 * 3, 14 * 30).to(device)
+        right_img = torch.rand(1, 3, 448 * 3, 14 * 30).to(device)
 
         # model = FSNet()
         model = FANet(3, 0, 196, 'dinov2', False)
 
         # model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
+        total_params = sum(p.numel() for p in model.parameters())
+        print("Total parameters:", total_params)
+
+        total_params = sum(p.numel() for p in model.feature_extraction.parameters())
+        print("Total parameters:", total_params)
+
+        total_params = sum(p.numel() for p in model.matching_module.parameters())
+        print("Total parameters:", total_params)
+
+        for name, param in model.named_parameters():
+            if "feature_extraction" in name:
+                param.requires_grad = False
+
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print("Total parameters:", total_params)
+
+        # summary(model.cuda(), [(3, 448, 224), (3, 448, 224)], batch_size=2)
+        # summary(model_0.cuda(), [(3, 448, 224)], batch_size=2)
+        # summary(model.feature_extraction.cuda(), [(3, 448, 224)], batch_size=2)
+        # summary(model.matching_module.cuda(), [(776, 32, 14)], batch_size=2)
+
         net = torch.nn.DataParallel(model).to(device)
 
-        for _ in range(20):
+        for _ in range(1):
             res = net(left_img, right_img)
             # res = net(left_img)
             print(res.shape)

@@ -40,7 +40,7 @@ def build_model_from_cfg(cfg, only_teacher=False):
 
 
 def build_vit_matching_module(in_chans):
-    vit = vits.vit_small(patch_size=1, in_chans=in_chans)
+    vit = vits.vit_small_v2(patch_size=1, in_chans=in_chans)
     vit.forward = partial(
         vit.get_intermediate_layers,
         n=1,

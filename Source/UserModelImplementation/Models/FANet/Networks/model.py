@@ -30,12 +30,13 @@ class FANet(nn.Module):
         self._h, self._w = None, None
         self.in_channles, self.backbone, self.pre_train_opt = in_channles, backbone, pre_train_opt
         self.feature_extraction = self._get_feature_extraction()
-        self.matching_module = build_vit_matching_module(776)
-        self.deonv_0, self.deonv_1, self.deonv_2 = self._get_decode_module()
+        self.matching_module = build_vit_matching_module(2056)
+        self.deonv_0, self.deonv_1, self.deonv_2, self.deonv_3 = self._get_decode_module()
         self.disp_regression = DispRegression([start_disp, start_disp + disp_num - 1])
 
     def _get_dinov2(self) -> nn.Module:
-        feature_extraction = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
+        # feature_extraction = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
+        feature_extraction = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
         feature_extraction.forward = partial(
             feature_extraction.get_intermediate_layers,
             n=1, reshape=True, return_class_token=False, norm=False,)
@@ -47,12 +48,14 @@ class FANet(nn.Module):
         return self._get_dinov2()
 
     def _get_decode_module(self) -> nn.Module:
-        deonv_1 = nn.Sequential(nn.Conv3d(192, 64, kernel_size=3, padding=1, stride=1, bias=False),
-                                nn.BatchNorm3d(64), nn.ReLU(inplace=True))
-        deonv_2 = nn.Sequential(nn.Conv3d(64, 8, kernel_size=3, padding=1, stride=1, bias=False),
-                                nn.BatchNorm3d(8), nn.ReLU(inplace=True))
-        deonv_3 = nn.Sequential(nn.Conv3d(8, 1, kernel_size=3, padding=1, stride=1, bias=False))
-        return deonv_1, deonv_2, deonv_3
+        deonv_0 = nn.Sequential(nn.Conv3d(384, 48, kernel_size=3, padding=1, stride=1, bias=False),
+                                nn.BatchNorm3d(48), nn.ReLU(inplace=True))
+        deonv_1 = nn.Sequential(nn.Conv3d(48, 12, kernel_size=3, padding=1, stride=1, bias=False),
+                                nn.BatchNorm3d(12), nn.ReLU(inplace=True))
+        deonv_2 = nn.Sequential(nn.Conv3d(12, 3, kernel_size=3, padding=1, stride=1, bias=False),
+                                nn.BatchNorm3d(3), nn.ReLU(inplace=True))
+        deonv_3 = nn.Sequential(nn.Conv3d(3, 1, kernel_size=3, padding=1, stride=1, bias=False))
+        return deonv_0, deonv_1, deonv_2, deonv_3
 
     def _build_cost_volume_proc(self, left_img: torch.Tensor,
                                 right_img: torch.Tensor) -> torch.Tensor:
@@ -73,13 +76,14 @@ class FANet(nn.Module):
 
     def _matching_module_proc(self, cost: torch.Tensor) -> torch.Tensor:
         b, c, d, h, w = cost.shape
-        cost = cost.reshape(b, c, -1, w)
+        cost = cost.reshape(b, c, d, -1)
         cost = self.matching_module.get_intermediate_layers(
             cost, n=1, reshape=True, return_class_token=False, norm=False)[self.ID_FEAT]
         cost = cost.reshape(b, -1, d, h, w)
         cost = self._up_sampling(cost, [d * 2, h * 2, w * 2], self.deonv_0)
         cost = self._up_sampling(cost, [d * 4, h * 4, w * 4], self.deonv_1)
-        cost = self._up_sampling(cost, [self.disp_num, self._h, self._w], self.deonv_2)
+        cost = self._up_sampling(cost, [d * 8, h * 8, w * 8], self.deonv_2)
+        cost = self._up_sampling(cost, [self.disp_num, self._h, self._w], self.deonv_3)
         return cost
 
     def _mask_fine_tune_proc(self, left_img: torch.Tensor, right_img: torch.Tensor,
