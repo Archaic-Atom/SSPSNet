@@ -15,7 +15,7 @@ fi
 echo "Begin to train the model!"
 CUDA_VISIBLE_DEVICES=0,2,3,6 nohup python -u Source/main.py \
                         --mode train \
-                        --batchSize 24 \
+                        --batchSize 4 \
                         --gpu 4 \
                         --trainListPath ./Datasets/sceneflow_stereo_training_list.csv \
                         --valListPath ./Datasets/sceneflow_stereo_val_list.csv \
@@ -28,10 +28,10 @@ CUDA_VISIBLE_DEVICES=0,2,3,6 nohup python -u Source/main.py \
                         --sampleNum 1 \
                         --log ${tensorboard_folder} \
                         --lr 0.0001 \
-                        --dist FALSE \
-                        --modelName FANet \
+                        --dist True \
+                        --modelName SAStereo \
                         --port ${dist_port} \
-                        --modelDir ./Checkpoint/ \
+                        --modelDir ./Checkpoint_ga/ \
                         --debug False \
                         --auto_save_num 1 \
                         --dataset sceneflow > TrainRun.log 2>&1 &
