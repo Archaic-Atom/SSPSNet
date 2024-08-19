@@ -1,4 +1,5 @@
 # -*coding: utf-8 -*-
+import os
 import JackFramework as jf
 from UserModelImplementation.user_interface import UserInterface
 
@@ -10,4 +11,5 @@ def main() -> None:
 
 # execute the main function
 if __name__ == "__main__":
+    os.environ["TORCH_DISTRIBUTED_DEBUG"] = "DETAIL"
     main()

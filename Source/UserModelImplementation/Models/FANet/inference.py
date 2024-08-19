@@ -28,6 +28,7 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
         self.__args = args
         self._acc = Accuracy(args)
         self._loss = Loss(args)
+        self._model = None
 
     @staticmethod
     def lr_lambda(epoch: int) -> float:
@@ -124,9 +125,9 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
     # Optional
     def load_model(self, model: object, checkpoint: dict, model_id: int) -> bool:
         # return False
-        # model.load_state_dict(checkpoint['model_0'], strict=False)
-        # jf.log.info("Model loaded successfully_add")
-        return False
+        model.load_state_dict(checkpoint['model_0'], strict=False)
+        jf.log.info("Model loaded successfully by user")
+        return True
 
     # Optional
     def load_opt(self, opt: object, checkpoint: dict, model_id: int) -> bool:

@@ -64,6 +64,7 @@ class DinoVisionTransformer(nn.Module):
         num_register_tokens=0,
         interpolate_antialias=False,
         interpolate_offset=0.1,
+        use_intermediate_layers=True,  # to use DDP
     ):
         """
         Args:
@@ -161,10 +162,10 @@ class DinoVisionTransformer(nn.Module):
             self.chunked_blocks = False
             self.blocks = nn.ModuleList(blocks_list)
 
-        self.norm = norm_layer(embed_dim)
-        self.head = nn.Identity()
-
-        self.mask_token = nn.Parameter(torch.zeros(1, embed_dim))
+        if not use_intermediate_layers:
+            self.norm = norm_layer(embed_dim)
+            self.head = nn.Identity()
+            self.mask_token = nn.Parameter(torch.zeros(1, embed_dim))
 
         self.init_weights()
 
