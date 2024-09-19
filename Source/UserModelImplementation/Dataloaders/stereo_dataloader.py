@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import time
 import JackFramework as jf
 import DatasetHandler as dh
@@ -50,11 +51,12 @@ class StereoDataloader(jf.UserTemplate.DataHandlerTemplate):
     def save_result(self, output_data: list, supplement: list,
                     img_id: int, model_id: int) -> None:
         assert self.__train_dataset is not None
-        args, off_set = self.__args, 1
+        args, off_set, id_c = self.__args, 1, 1
         last_position = len(output_data) - off_set
+
         if model_id == self.MODEL_ID:
             self.__saver.save_output(
-                output_data[last_position].cpu().detach().numpy(), img_id,
+                output_data[last_position].squeeze(id_c).cpu().detach().numpy(), img_id,
                 args.dataset, supplement, time.time() - self.__start_time)
 
     def show_intermediate_result(self, epoch: int,
@@ -62,3 +64,32 @@ class StereoDataloader(jf.UserTemplate.DataHandlerTemplate):
         assert len(loss) == len(acc)  # same model number
         return self.__result_str.training_intermediate_result(
             epoch, loss[self.MODEL_ID], acc[self.MODEL_ID])
+
+    # optional for background
+    def load_test_data(self, cmd: list) -> tuple:
+        assert 3 == len(cmd)
+        left_img_path, right_img_path, _ = cmd
+        left_img, right_img, gt_dsp, top_pad, left_pad, name = \
+            self.__train_dataset.get_data(
+                left_img_path, right_img_path, 'None', False)
+        left_img, right_img, gt_dsp, top_pad, left_pad, name = \
+            self.__train_dataset.expand_batch_size_dims(
+                left_img, right_img, gt_dsp, top_pad, left_pad, name)
+        return [left_img, right_img, gt_dsp, top_pad, left_pad, name]
+
+    def save_test_data(self, output_data: list, supplement: list, cmd: str, model_id: int) -> None:
+        assert 3 == len(cmd)
+        left_img_path, _, save_path = cmd
+        off_set = 1
+        last_position = len(output_data) - off_set
+        fileName = os.path.basename(left_img_path)
+        full_file = os.path.splitext(fileName)
+        save_path = os.path.join(save_path, full_file[0] + '.png')
+
+        print(output_data[last_position].shape)
+        print(output_data[last_position].cpu().detach().numpy().shape)
+        # last_position = 0
+        if model_id == self.MODEL_ID:
+            self.__saver.save_output_by_path(output_data[last_position].cpu().detach().numpy(),
+                                             supplement, save_path)
+        return full_file[0] + '.png'

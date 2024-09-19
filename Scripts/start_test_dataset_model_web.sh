@@ -1,6 +1,6 @@
 #!/bin/bash
 # parameter
-test_gpus_id=2,3
+test_gpus_id=2
 eva_gpus_id=0
 test_list_path='./Datasets/sceneflow_stereo_testing_list.csv'
 evalution_format='training'
@@ -9,9 +9,9 @@ echo "test gpus id: "${test_gpus_id}
 echo "the list path is: "${test_list_path}
 echo "start to predict disparity map"
 CUDA_VISIBLE_DEVICES=${test_gpus_id} python -u Source/main.py \
-                        --mode test \
+                        --mode web \
                         --batchSize 1 \
-                        --gpu 4 \
+                        --gpu 1 \
                         --trainListPath ${test_list_path} \
                         --imgWidth 966 \
                         --imgHeight 546 \
