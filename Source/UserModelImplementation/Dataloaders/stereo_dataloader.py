@@ -86,8 +86,6 @@ class StereoDataloader(jf.UserTemplate.DataHandlerTemplate):
         full_file = os.path.splitext(fileName)
         save_path = os.path.join(save_path, full_file[0] + '.png')
 
-        print(output_data[last_position].shape)
-        print(output_data[last_position].cpu().detach().numpy().shape)
         # last_position = 0
         if model_id == self.MODEL_ID:
             self.__saver.save_output_by_path(output_data[last_position].cpu().detach().numpy(),

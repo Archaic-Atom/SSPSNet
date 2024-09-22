@@ -93,7 +93,6 @@ class FANet(nn.Module):
         cost = self._build_cost_volume_proc(left_img, right_img)
         cost = self._matching_module_proc(cost)
         disp = self.disp_regression(-torch.squeeze(cost, 1))
-        print(disp.shape)
         return disp
 
     def _mask_pre_train_proc(self, left_img: torch.Tensor,
