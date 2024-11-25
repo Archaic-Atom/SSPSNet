@@ -13,8 +13,8 @@ CUDA_VISIBLE_DEVICES=${test_gpus_id} python -u Source/main.py \
                         --batchSize 1 \
                         --gpu 1 \
                         --trainListPath ${test_list_path} \
-                        --imgWidth 966 \
-                        --imgHeight 546 \
+                        --imgWidth 1288 \
+                        --imgHeight 840 \
                         --dataloaderNum 4 \
                         --maxEpochs 1 \
                         --imgNum 200 \

@@ -29,7 +29,7 @@ CUDA_VISIBLE_DEVICES=0,2,3,6 nohup python -u Source/main.py \
                         --log ${tensorboard_folder} \
                         --lr 0.0001 \
                         --dist True \
-                        --modelName SAStereo \
+                        --modelName MMRF \
                         --port ${dist_port} \
                         --modelDir ./Checkpoint_ga/ \
                         --debug False \

@@ -2,11 +2,13 @@
 import JackFramework as jf
 from .SAStereo import SAStereoInterface
 from .FANet import FANetInterface
+from .MMRF import MMRFInterface
 
 
 def _get_model_dict() -> dict:
     return {'SAStereo': SAStereoInterface,
-            'FANet': FANetInterface, }
+            'FANet': FANetInterface,
+            'MMRF': MMRFInterface}
 
 
 def model_zoo(args: object, model_name: str) -> object:
