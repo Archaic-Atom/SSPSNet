@@ -54,12 +54,29 @@ class Loss(object):
         res = None
         for i, disp in enumerate(disp_list):
             if i == 0:
-                res = F.smooth_l1_loss(
-                    torch.squeeze(disp, 1)[mask_disp], disp_label[mask_disp])
+                res = F.smooth_l1_loss(disp[mask_disp], disp_label[mask_disp])
             else:
-                res += F.smooth_l1_loss(
-                    torch.squeeze(disp, 1)[mask_disp], disp_label[mask_disp])
-        return [res]
+                res += F.smooth_l1_loss(disp[mask_disp], disp_label[mask_disp])
+        return res
+
+    def loss_coarse(self, disp_pred, logits_pred, disp_gt, mask_disp: torch.Tensor):
+        prob = F.softmax(logits_pred, dim=-1)
+        print(disp_gt.shape, prob.shape, disp_pred.shape)
+        error = F.smooth_l1_loss(disp_pred, disp_gt, reduction='none').unsqueeze(-1)
+        print('error', error.shape)
+
+        if torch.any(mask_disp):
+            loss = torch.sum((prob * error)[-1], dim=-1, keepdim=False)[mask_disp].mean()
+        else:  # dummy loss
+            loss = F.smooth_l1_loss(disp_pred, disp_pred.detach(), reduction='mean') + \
+                F.smooth_l1_loss(logits_pred, logits_pred.detach(), reduction='mean')
+        return loss
+
+    def prob_loss(self, prob, disp_gt, mask_disp: torch.Tensor):
+        print('prob_loss', prob.shape)
+        disp = self._disp_regression(prob).squeeze(1)
+        res = F.smooth_l1_loss(disp[mask_disp], disp_gt[mask_disp])
+        return res
 
     def feature_alignment_loss(self, left_feat: torch.Tensor, right_feat: torch.Tensor,
                                disp_label: torch.Tensor, mask_disp: torch.Tensor) -> list:

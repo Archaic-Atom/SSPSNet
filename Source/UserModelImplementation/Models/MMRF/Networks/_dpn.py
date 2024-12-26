@@ -114,5 +114,6 @@ class DPN(nn.Module):
         memory, label_seeds = self.propagation(cost_volume, label_seeds, context)
         outputs = self.prop_head(memory).view(-1, *label_seeds.shape)
         labels = F.relu(outputs + label_seeds[None])  # candidate labels
+        prob = prob.reshape(bs, ht, wd, nd).permute(0, 3, 1, 2)
 
         return cost_volume, prob, label_seeds, labels

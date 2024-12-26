@@ -12,12 +12,12 @@ import JackFramework as jf
 
 import UserModelImplementation.user_define as user_def
 
-from .Networks import FANet
+from .Networks import StereoT
 from ._loss import Loss
 from ._accuracy import Accuracy
 
 
-class MMRFInterface(jf.UserTemplate.ModelHandlerTemplate):
+class StereoTInterface(jf.UserTemplate.ModelHandlerTemplate):
     """docstring for DeepLabV3Plus"""
     ID_MODEL = 0
     ID_LEFT_DISP_GT = 0
@@ -40,7 +40,7 @@ class MMRFInterface(jf.UserTemplate.ModelHandlerTemplate):
     def get_model(self) -> list:
         args = self.__args
         # return model
-        model = FANet(3, args.start_disp, args.disp_num, 'dinov2', args.pre_train_opt)
+        model = StereoT(3, args.start_disp, args.disp_num, 'dinov2', args.pre_train_opt)
 
         if not args.pre_train_opt:
             for name, param in model.named_parameters():
@@ -103,15 +103,8 @@ class MMRFInterface(jf.UserTemplate.ModelHandlerTemplate):
                     output_data[self.ID_RIGHT_IMG],
                     left_img_disp, mask)
             else:
-                print(len(output_data))
-                loss_1 = self._loss.matching_loss(
-                    output_data[:1], left_img_disp, mask)
-                loss2 = self._loss.loss_coarse(
-                    output_data[1], output_data[2], left_img_disp, mask)
-                loss3 = self._loss.prob_loss(output_data[3], left_img_disp, mask)
-                print(loss_1, loss2, loss3)
-                loss = loss_1 + loss2 + loss3
-                loss = [loss]
+                loss = self._loss.matching_loss(
+                    output_data, left_img_disp, mask)
         return loss
 
     def _get_mask(self, left_img_disp: torch.Tensor) -> torch.Tensor:

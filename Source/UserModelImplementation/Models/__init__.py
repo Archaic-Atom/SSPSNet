@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*
 import JackFramework as jf
-from .SAStereo import SAStereoInterface
-from .FANet import FANetInterface
-from .MMRF import MMRFInterface
+# from .SAStereo import SAStereoInterface
+# from .FANet import FANetInterface
+# from .MMRF import MMRFInterface
+from .Transformer import StereoTInterface
 
 
 def _get_model_dict() -> dict:
-    return {'SAStereo': SAStereoInterface,
-            'FANet': FANetInterface,
-            'MMRF': MMRFInterface}
+    # return {'SAStereo': SAStereoInterface,
+    #        'FANet': FANetInterface,
+    #        'MMRF': MMRFInterface,
+    #       'StereoT': StereoTInterface}
+    return {'StereoT': StereoTInterface, }
 
 
 def model_zoo(args: object, model_name: str) -> object:

@@ -154,7 +154,8 @@ class NMRF(nn.Module):
         left_feat_gw = self.gw(left_img)
         right_feat_gw = self.gw(left_img)
 
-        labels_curr = labels[-1].detach()
+        # labels_curr = labels[-1].detach()
+        labels_curr = labels[-1]
         tgt = self.inference(labels_curr, left_feat, right_feat, left_feat_gw, right_feat_gw)
         disp_delta = self.infer_head(tgt)
         coarse_disp = F.relu(labels_curr[None].unsqueeze(-1) + disp_delta)
@@ -165,8 +166,12 @@ class NMRF(nn.Module):
             'a (b h w) n (hs ws) -> a b (h hs) (w ws) n',
             h=ht, w=wd, hs=self.image_scaling_ratio).contiguous()
         mask = rearrange(mask, 'a (b h w) n (hs ws) -> a b (h hs) (w ws) n',
-                         h=ht, w=wd, hs=14)
-        return coarse_disp, mask
+                         h=ht, w=wd, hs=self.image_scaling_ratio)
+
+        _, indices = torch.max(mask[-1], dim=-1, keepdim=True)
+        disp = torch.gather(
+            coarse_disp[-1], dim=-1, index=indices).squeeze(-1) * self.image_scaling_ratio  # [B,H,W]
+        return coarse_disp, mask, disp
 
     def refine_forward(self, coarse_disp: torch.Tensor, mask: torch.Tensor,
                        left_img: torch.Tensor, right_img: torch.Tensor,
@@ -196,15 +201,14 @@ class NMRF(nn.Module):
         disp_pred = rearrange(disp_pred,
                               'a b h w (hs ws) -> a b (h hs) (w ws)',
                               hs=refinement_image_scaling_ratio).contiguous()
-        return disp_pred
+        return disp_pred[-1]
 
-    def forward(self, left_img: torch.Tensor,
-                right_img: torch.Tensor,
+    def forward(self, left_img: torch.Tensor, right_img: torch.Tensor,
                 labels: list) -> torch.Tensor:
-        coarse_disp, mask = self.infer_forward(left_img, right_img, labels)
+        coarse_disp, mask, disp = self.infer_forward(left_img, right_img, labels)
         left_img = self.amplify_size(left_img)
         right_img = self.amplify_size(right_img)
         disp_pred = self.refine_forward(
             coarse_disp, mask, left_img, right_img,
             self.image_scaling_ratio, self.refinement_image_scaling_ratio)
-        return disp_pred, mask
+        return disp_pred, disp, mask

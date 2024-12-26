@@ -67,9 +67,14 @@ class FANet(nn.Module):
         left_img, right_img = self._feature_extraction_module_proc(left_img, right_img)
         cost = self._build_cost_volume_proc(
             left_img, right_img, self.start_disp, int(self.disp_num / self.IMAGE_SCALING_RATIO))
-        cost, _, _, labels = self.matching_module(cost, left_img)
-        disp, _ = self.mmrf(left_img, right_img, labels)
-        return disp
+        _, prob, _, labels = self.matching_module(cost, left_img)
+        disp, coarse_disp, mask = self.mmrf(left_img, right_img, labels)
+        print('model', prob.shape)
+        prob = F.interpolate(prob.unsqueeze(1), [self.disp_num, self._h, self._w], mode='trilinear', align_corners=True)
+        prob = prob.squeeze(1)
+        print('model', prob.shape)
+
+        return disp, coarse_disp, mask, prob
 
     def _mask_pre_train_proc(self, left_img: torch.Tensor,
                              right_img: torch.Tensor) -> torch.Tensor:

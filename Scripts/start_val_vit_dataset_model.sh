@@ -29,7 +29,7 @@ CUDA_VISIBLE_DEVICES=0 nohup python -u Source/main.py \
                         --log ${tensorboard_folder} \
                         --lr 0.001 \
                         --dist False \
-                        --modelName FANet \
+                        --modelName MMRF \
                         --port ${dist_port} \
                         --modelDir ./Checkpoint_Test/ \
                         --debug False \
