@@ -1,2 +1,2 @@
 # -*- coding: utf-8 -*-
-from .inference import StereoTInterface
+from .inference import StereoAInterface

@@ -49,18 +49,45 @@ class Loss(object):
         disp = self._disp_regression(-cost)
         return F.smooth_l1_loss(disp[mask_disp.unsqueeze(1)], disp_label[mask_disp.unsqueeze(1)])
 
+    @staticmethod
+    def _disp2distribute(start_disp, disp_gt, max_disp, b=2):
+        disp_gt = disp_gt.unsqueeze(1)
+        disp_range = torch.arange(start_disp, start_disp + max_disp).view(1, -1, 1, 1).float().cuda()
+        gt_distribute = torch.exp(-torch.abs(disp_range - disp_gt) / b)
+        gt_distribute = gt_distribute / (torch.sum(gt_distribute, dim=1, keepdim=True) + 1e-8)
+        return gt_distribute
+
+    @staticmethod
+    def _celoss(start_disp, disp_gt, max_disp, gt_distribute, pred_distribute):
+        mask = (disp_gt > start_disp) & (disp_gt < start_disp + max_disp)
+
+        pred_distribute = torch.log(pred_distribute + 1e-8)
+        ce_loss = torch.sum(-gt_distribute * pred_distribute, dim=1)
+        ce_loss = torch.mean(ce_loss[mask])
+        return ce_loss
+
     def matching_loss(self, disp_list: list, disp_label: torch.Tensor,
-                      mask_disp: torch.Tensor) -> torch.Tensor:
-        res, dim_num = None, 4
-        for i, disp in enumerate(disp_list):
-            assert len(disp.shape) == dim_num
-            if i == 0:
-                res = F.smooth_l1_loss(
-                    torch.squeeze(disp, 1)[mask_disp], disp_label[mask_disp])
-            else:
-                res += F.smooth_l1_loss(
-                    torch.squeeze(disp, 1)[mask_disp], disp_label[mask_disp])
-        return [res]
+                      mask_disp: torch.Tensor, udc: bool) -> torch.Tensor:
+        args = self.__arg
+        res = []
+        gt_distribute = self._disp2distribute(args.start_disp, disp_label, args.disp_num, b=2)
+
+        loss_1 = 0.5 * F.smooth_l1_loss(disp_list[0][mask_disp], disp_label[mask_disp]) + \
+            0.7 * F.smooth_l1_loss(disp_list[1][mask_disp], disp_label[mask_disp]) + \
+            F.smooth_l1_loss(disp_list[2][mask_disp], disp_label[mask_disp])
+
+        if udc:
+            loss_2 = 0.5 * self._celoss(
+                args.start_disp, disp_label, args.disp_num, gt_distribute, disp_list[3]) + \
+                0.7 * self._celoss(
+                    args.start_disp, disp_label, args.disp_num, gt_distribute, disp_list[4]) + \
+                self._celoss(
+                    args.start_disp, disp_label, args.disp_num, gt_distribute, disp_list[5])
+            res.append(loss_1 + loss_2)
+            res.append(loss_2)
+        res.append(loss_1)
+
+        return res
 
     def feature_alignment_loss(self, left_feat: torch.Tensor, right_feat: torch.Tensor,
                                disp_label: torch.Tensor, mask_disp: torch.Tensor) -> list:

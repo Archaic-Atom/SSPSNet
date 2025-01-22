@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # import torch.nn as nn
+from collections import OrderedDict
 import math
 import torch
 import torch.optim as optim
@@ -12,12 +13,13 @@ import JackFramework as jf
 
 import UserModelImplementation.user_define as user_def
 
-from .Networks import StereoT
+from ._load_pre_trained_model import LoadPreTrainedModel
+from .Networks import StereoA
 from ._loss import Loss
 from ._accuracy import Accuracy
 
 
-class StereoTInterface(jf.UserTemplate.ModelHandlerTemplate):
+class StereoAInterface(jf.UserTemplate.ModelHandlerTemplate):
     """docstring for DeepLabV3Plus"""
     ID_MODEL = 0
     ID_LEFT_DISP_GT = 0
@@ -40,11 +42,11 @@ class StereoTInterface(jf.UserTemplate.ModelHandlerTemplate):
     def get_model(self) -> list:
         args = self.__args
         # return model
-        model = StereoT(3, args.start_disp, args.disp_num, 'dinov2', args.pre_train_opt)
+        model = StereoA(3, args.start_disp, args.disp_num, 'dinov2', args.pre_train_opt)
 
         if not args.pre_train_opt:
             for name, param in model.named_parameters():
-                if "feature_extraction" in name:
+                if "pretrained" in name:
                     param.requires_grad = False
         return [model]
 
@@ -104,7 +106,7 @@ class StereoTInterface(jf.UserTemplate.ModelHandlerTemplate):
                     left_img_disp, mask)
             else:
                 loss = self._loss.matching_loss(
-                    output_data, left_img_disp, mask)
+                    output_data, left_img_disp, mask, True)
         return loss
 
     def _get_mask(self, left_img_disp: torch.Tensor) -> torch.Tensor:
@@ -122,16 +124,37 @@ class StereoTInterface(jf.UserTemplate.ModelHandlerTemplate):
         # do something after training epoch
         pass
 
+    @staticmethod
+    def _load_pre_trained_model(model: object, checkpoint: dict) -> None:
+        state_dict, off_set = OrderedDict(), 1
+        old_model_name = 'pipeline'
+        for key, value in checkpoint['state_dict'].items():
+            if old_model_name in key:
+                new_key = key[len(old_model_name) + off_set:]
+                state_dict[new_key] = value
+            else:
+                state_dict[key] = value
+
+        load_pre_trained_model = LoadPreTrainedModel()
+        load_pre_trained_model.load_state_dict(model, state_dict)
+
     # Optional
     def load_model(self, model: object, checkpoint: dict, model_id: int) -> bool:
-        # return False
-        model.load_state_dict(checkpoint['model_0'], strict=False)
-        jf.log.info("Model loaded successfully by user")
+        assert model_id == self.ID_MODEL
+        args = self.__args
+        if args.load_pre_train_model_opt:
+            self._load_pre_trained_model(model, checkpoint)
+            jf.log.info("load the pretrained model")
+        else:
+            model.load_state_dict(checkpoint['model_0'], strict=True)
+            jf.log.info("load the old model")
         return True
 
     # Optional
     def load_opt(self, opt: object, checkpoint: dict, model_id: int) -> bool:
-        # return False
+        args = self.__args
+        if args.load_pre_train_model_opt:
+            return True
         return False
 
     # Optional

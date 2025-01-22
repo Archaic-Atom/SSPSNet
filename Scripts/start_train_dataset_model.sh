@@ -29,7 +29,7 @@ CUDA_VISIBLE_DEVICES=6,7 nohup python -u Source/main.py \
                         --valImgNum 0 \
                         --sampleNum 1 \
                         --log ${tensorboard_folder} \
-                        --lr 0.00002 \
+                        --lr 0.001 \
                         --dist TRUE \
                         --modelName StereoT \
                         --port ${dist_port} \

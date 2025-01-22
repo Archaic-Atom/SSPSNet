@@ -150,7 +150,7 @@ class DisparityRegression(Module):
     def forward(self, x):
         assert(x.is_contiguous() == True)
         with torch.cuda.device_of(x):
-            disp = Variable(torch.Tensor(np.reshape(np.array(range(self.maxdisp)), [1, self.maxdisp, 1, 1])).cuda(), requires_grad=False)
+            disp = Variable(torch.Tensor(np.reshape(np.array(range(self.maxdisp)), [0, self.maxdisp - 1, 1, 1])).cuda(), requires_grad=False)
             disp = disp.repeat(x.size()[0], 1, x.size()[2], x.size()[3])
             out = torch.sum(x * disp, 1)
         return out
