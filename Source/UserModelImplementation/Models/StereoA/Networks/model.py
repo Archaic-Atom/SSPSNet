@@ -30,57 +30,31 @@ class StereoA(nn.Module):
         self.pretrained = self._get_feature_extraction()
         out_channels = [256, 512, 1024, 1024]
         self.projects = nn.ModuleList([
-            nn.Conv2d(in_channels=1024,
-                      out_channels=out_channel,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0,
-                      ) for out_channel in out_channels
+            nn.Conv2d(in_channels=1024, out_channels=out_channel,
+                      kernel_size=1, stride=1, padding=0,) for out_channel in out_channels
         ])
 
         self.resize_layers = nn.ModuleList([
-            nn.ConvTranspose2d(
-                in_channels=out_channels[0],
-                out_channels=out_channels[0] // 16,
-                kernel_size=4,
-                stride=4,
-                padding=0),
-            nn.ConvTranspose2d(
-                in_channels=out_channels[1],
-                out_channels=out_channels[1] // 16,
-                kernel_size=4,
-                stride=4,
-                padding=0),
-            nn.ConvTranspose2d(
-                in_channels=out_channels[2],
-                out_channels=out_channels[2] // 16,
-                kernel_size=4,
-                stride=4,
-                padding=0),
-            nn.ConvTranspose2d(
-                in_channels=out_channels[3],
-                out_channels=out_channels[3] // 16,
-                kernel_size=4,
-                stride=4,
-                padding=0),
+            nn.ConvTranspose2d(in_channels=out_channels[0], out_channels=out_channels[0] // 16,
+                               kernel_size=4, stride=4, padding=0),
+            nn.ConvTranspose2d(in_channels=out_channels[1], out_channels=out_channels[1] // 16,
+                               kernel_size=4, stride=4, padding=0),
+            nn.ConvTranspose2d(in_channels=out_channels[2], out_channels=out_channels[2] // 16,
+                               kernel_size=4, stride=4, padding=0),
+            nn.ConvTranspose2d(in_channels=out_channels[3], out_channels=out_channels[3] // 16,
+                               kernel_size=4, stride=4, padding=0),
         ])
 
-        self.project = nn.Conv2d(in_channels=176,
-                                 out_channels=64,
-                                 kernel_size=1,
-                                 stride=1,
-                                 padding=0,
-                                 )
+        self.project = nn.Conv2d(in_channels=176, out_channels=64,
+                                 kernel_size=1, stride=1, padding=0,)
 
         self.matching_module = PSMNet(128, start_disp, disp_num, True)
         self.disp_regression = DispRegression([start_disp, start_disp + disp_num - 1])
 
     def _get_dinov2(self) -> nn.Module:
         # feature_extraction = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
-        feature_extraction = torch.hub.load('facebookresearch/dinov2',
-                                            'dinov2_vitl14',
-                                            source='local',
-                                            pretrained=False)
+        feature_extraction = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14',
+                                            source='local', pretrained=False)
         feature_extraction.forward = partial(
             feature_extraction.get_intermediate_layers,
             n=1, reshape=True, return_class_token=False, norm=False,)
