@@ -2,13 +2,22 @@
 @author: Xinjing Cheng & Peng Wang
 
 """
-from torch import nn
 import torch
+from torch import nn
+import torch.nn.functional as F
+from einops import rearrange
+try:
+    from ._offset import Refinement, RefinementLayer, MLP
+except ImportError:
+    from _offset import Refinement, RefinementLayer, MLP
 
 
 class Prompt(nn.Module):
-    def __init__(self, prop_time, prop_kernel, norm_type='8sum'):
+    EPS = 1e-9
+
+    def __init__(self, prop_time, in_channels=64, prop_kernel=3, norm_type='8sum'):
         """
+
         Inputs:
             prop_time: how many steps for CSPN to perform
             prop_kernel: the size of kernel (current only support 3x3)
@@ -18,31 +27,89 @@ class Prompt(nn.Module):
                             This will lead the center affinity to be 0
         """
         super().__init__()
-        self.prop_time = prop_time
-        self.prop_kernel = prop_kernel
         assert prop_kernel == 3, 'this version only support 8 (3x3 - 1) neighborhood'
-
-        self.norm_type = norm_type
         assert norm_type in ['8sum', '8sum_abs']
+        self.norm_type, self.prop_time = norm_type, prop_time
+        self.prop_kernel, self.out_feature = prop_kernel, 1
+        self.sum_conv = self._get_sum_conv()
+        self.concatconv_refine, self.gw_refine = \
+            self._concatconv(in_channels, 8), self._gw(in_channels, 32)
+        self.guidance, self.guidance_head = self._refine_layers(8)
 
-        self.in_feature = 1
-        self.out_feature = 1
-
-        self.sum_conv = nn.Conv3d(in_channels=8, out_channels=1,
-                                  kernel_size=(1, 1, 1), stride=1,
-                                  padding=0, bias=False)
+    def _get_sum_conv(self):
+        sum_conv = nn.Conv3d(in_channels=8, out_channels=1, kernel_size=(1, 1, 1),
+                             stride=1, padding=0, bias=False)
         weight = torch.ones(1, 8, 1, 1, 1).cuda()
-        self.sum_conv.weight = nn.Parameter(weight)
-        for param in self.sum_conv.parameters():
+        sum_conv.weight = nn.Parameter(weight)
+        for param in sum_conv.parameters():
             param.requires_grad = False
+        return sum_conv
 
-    def forward(self, guidance, blur_depth, sparse_depth=None):
+    def _concatconv(self, in_channels: int, out_channels: int) -> nn.Module:
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels * 2, 3, 1, 1, bias=False),
+            nn.InstanceNorm2d(out_channels * 2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels * 2, out_channels, 1, 1, 0, bias=False)
+        )
+
+    def _gw(self, in_channels: int, out_channels: int) -> nn.Module:
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels // 2, 3, 1, 1, bias=False),
+            nn.InstanceNorm2d(out_channels // 2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels // 2, out_channels, 1, 1, 0, bias=False)
+        )
+
+    def _refine_layers(self, out_channels: int, infer_embed_dim: int = 16,
+                       num_refine_layers: int = 5, mlp_ratio: float = 4,
+                       refine_window_size: int = 6, infer_n_heads: int = 4,
+                       activation: str = "gelu", attn_drop: float = 0.,
+                       proj_drop: float = 0., dropout: float = 0.,
+                       drop_path: float = 0., normalize_before: bool = False,
+                       return_intermediate=False) -> nn.Module:
+        dpr = [x.item() for x in torch.linspace(0, drop_path, num_refine_layers)]
+        refine_layers = nn.ModuleList([
+            RefinementLayer(
+                infer_embed_dim, mlp_ratio=mlp_ratio, window_size=refine_window_size,
+                shift_size=0 if i % 2 == 0 else refine_window_size // 2, n_heads=infer_n_heads,
+                activation=activation,
+                attn_drop=attn_drop, proj_drop=proj_drop, drop_path=dpr[i], dropout=dropout,
+                normalize_before=normalize_before,
+            )
+            for i in range(num_refine_layers)]
+        )
+        refine_norm = nn.LayerNorm(infer_embed_dim)
+        refinement = Refinement(32, infer_embed_dim, layers=refine_layers, norm=refine_norm,
+                                return_intermediate=return_intermediate)
+        refine_head = MLP(infer_embed_dim, infer_embed_dim, out_channels, 3)
+        return refinement, refine_head
+
+    def forward(self, left_feat, right_feat, blur_depth, sparse_depth, size):
+        if len(blur_depth.shape) == 3:
+            blur_depth = blur_depth.unsqueeze(1)
+        h, w = size
+        left_feat_gw = self.gw_refine(
+            F.interpolate(left_feat, size, mode='bilinear', align_corners=True))
+        right_feat_gw = self.gw_refine(
+            F.interpolate(right_feat, size, mode='bilinear', align_corners=True))
+
+        left_feat = self.concatconv_refine(
+            F.interpolate(left_feat, size, mode='bilinear', align_corners=True))
+        right_feat = self.concatconv_refine(
+            F.interpolate(right_feat, size, mode='bilinear', align_corners=True))
+
+        blur_depth = blur_depth.detach()
+        tgt = self.guidance(blur_depth, left_feat, right_feat, left_feat_gw, right_feat_gw)
+        guidance = self.guidance_head(tgt)
+        guidance = rearrange(guidance, 'a (b h w) c -> (a b) c h w ', h=h, w=w)
+
         gate_wb, gate_sum = self.affinity_normalization(guidance)
 
         # pad input and convert to 8 channel 3D features
         raw_depth_input = blur_depth
 
-        #blur_depht_pad = nn.ZeroPad2d((1,1,1,1))
+        # blur_depht_pad = nn.ZeroPad2d((1,1,1,1))
         result_depth = blur_depth
 
         if sparse_depth is not None:
@@ -51,6 +118,7 @@ class Prompt(nn.Module):
         for _ in range(self.prop_time):
             # one propagation
             result_depth = self.pad_blur_depth(result_depth)
+
             neigbor_weighted_sum = self.sum_conv(gate_wb * result_depth)
             neigbor_weighted_sum = neigbor_weighted_sum.squeeze(1)
             neigbor_weighted_sum = neigbor_weighted_sum[:, :, 1:-1, 1:-1]
@@ -64,9 +132,10 @@ class Prompt(nn.Module):
             if sparse_depth is not None:
                 result_depth = (1 - sparse_mask) * result_depth + sparse_mask * raw_depth_input
 
-        return result_depth
+        return result_depth.squeeze(1)
 
     def affinity_normalization(self, guidance):
+
         # normalize features
         if 'abs' in self.norm_type:
             guidance = torch.abs(guidance)
@@ -118,7 +187,7 @@ class Prompt(nn.Module):
         gate_wb_abs = torch.abs(gate_wb)
         abs_weight = self.sum_conv(gate_wb_abs)
 
-        gate_wb = torch.div(gate_wb, abs_weight)
+        gate_wb = torch.div(gate_wb, abs_weight + self.EPS)
         gate_sum = self.sum_conv(gate_wb)
 
         gate_sum = gate_sum.squeeze(1)
@@ -154,21 +223,17 @@ class Prompt(nn.Module):
         return result_depth
 
     def normalize_gate(self, guidance):
-        gate1_x1_g1 = guidance.narrow(1, 0, 1)
-        gate1_x1_g2 = guidance.narrow(1, 1, 1)
-        gate1_x1_g1_abs = torch.abs(gate1_x1_g1)
-        gate1_x1_g2_abs = torch.abs(gate1_x1_g2)
-        elesum_gate1_x1 = torch.add(gate1_x1_g1_abs, gate1_x1_g2_abs)
-        gate1_x1_g1_cmb = torch.div(gate1_x1_g1, elesum_gate1_x1)
-        gate1_x1_g2_cmb = torch.div(gate1_x1_g2, elesum_gate1_x1)
+        elesum_gate1_x1 = torch.add(torch.abs(guidance.narrow(1, 0, 1)),
+                                    torch.abs(guidance.narrow(1, 1, 1)))
+        gate1_x1_g1_cmb = torch.div(guidance.narrow(1, 0, 1), elesum_gate1_x1 + self.EPS)
+        gate1_x1_g2_cmb = torch.div(guidance.narrow(1, 1, 1), elesum_gate1_x1 + self.EPS)
         return gate1_x1_g1_cmb, gate1_x1_g2_cmb
 
     def max_of_4_tensor(self, element1, element2, element3, element4):
-        max_element1_2 = torch.max(element1, element2)
-        max_element3_4 = torch.max(element3, element4)
-        return torch.max(max_element1_2, max_element3_4)
+        return torch.max(torch.max(element1, element2),
+                         torch.max(element3, element4))
 
-    def max_of_8_tensor(self, element1, element2, element3, element4, element5, element6, element7, element8):
-        max_element1_2 = self.max_of_4_tensor(element1, element2, element3, element4)
-        max_element3_4 = self.max_of_4_tensor(element5, element6, element7, element8)
-        return torch.max(max_element1_2, max_element3_4)
+    def max_of_8_tensor(self, element1, element2, element3,
+                        element4, element5, element6, element7, element8):
+        return torch.max(self.max_of_4_tensor(element1, element2, element3, element4),
+                         self.max_of_4_tensor(element5, element6, element7, element8))

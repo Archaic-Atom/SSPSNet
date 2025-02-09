@@ -1,6 +1,6 @@
 #!/bin/bash
 # parameter
-test_gpus_id=2
+test_gpus_id=7
 eva_gpus_id=0
 test_list_path='./Datasets/sceneflow_stereo_testing_list.csv'
 evalution_format='training'
@@ -22,8 +22,8 @@ CUDA_VISIBLE_DEVICES=${test_gpus_id} python -u Source/main.py \
                         --lr 0.0001 \
                         --log ./TestLog/ \
                         --dist False \
-                        --modelName FANet \
+                        --modelName StereoA \
                         --outputDir ./TestResult/ \
-                        --modelDir ./Checkpoint/ \
+                        --modelDir ./pre_trained/ \
                         --dataset sceneflow
 echo "Finish!"

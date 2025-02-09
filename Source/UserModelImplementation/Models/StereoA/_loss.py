@@ -83,10 +83,12 @@ class Loss(object):
                     args.start_disp, disp_label, args.disp_num, gt_distribute, disp_list[4]) + \
                 self._celoss(
                     args.start_disp, disp_label, args.disp_num, gt_distribute, disp_list[5])
-            res.append(loss_1 + loss_2)
+            loss_3 = F.smooth_l1_loss(disp_list[8][mask_disp], disp_label[mask_disp])
+            res.append(loss_1 + loss_2 + loss_3)
             res.append(loss_2)
+            res.append(loss_3)
         res.append(loss_1)
-
+        res.append(torch.mean(disp_list[7]))
         return res
 
     def feature_alignment_loss(self, left_feat: torch.Tensor, right_feat: torch.Tensor,

@@ -25,7 +25,6 @@ class Accuracy(object):
                           id_error_px: int = 1, invalid_value: int = 0) -> list:
         res = []
         for _, disp in enumerate(disp_list):
-            disp = torch.squeeze(disp, 1)
             if len(disp.shape) == self.DISP_DIM_LEN:
                 acc, mae = jf.acc.SMAccuracy.d_1(disp, disp_label, invalid_value)
                 res.extend((acc[id_error_px], mae))

@@ -106,9 +106,7 @@ class PSMNet(nn.Module):
                                    convbn_3d(32, 32, 3, 1, 1))
 
         self.dres2 = hourglass(32)
-
         self.dres3 = hourglass(32)
-
         self.dres4 = hourglass(32)
 
         self.classif1 = nn.Sequential(convbn_3d(32, 32, 3, 1, 1),

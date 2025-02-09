@@ -15,10 +15,10 @@ if [ -d "${tensorboard_folder}" ]; then
 fi
 
 echo "Begin to train the model!"
-CUDA_VISIBLE_DEVICES=3 nohup python -u Source/main.py \
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5 nohup python -u Source/main.py \
                         --mode train \
-                        --batchSize 5 \
-                        --gpu 1 \
+                        --batchSize 3 \
+                        --gpu 6 \
                         --trainListPath ./Datasets/sceneflow_stereo_training_list.csv\
                         --valListPath ./Datasets/sceneflow_stereo_val_list.csv \
                         --imgWidth 518 \
@@ -29,7 +29,7 @@ CUDA_VISIBLE_DEVICES=3 nohup python -u Source/main.py \
                         --valImgNum 0 \
                         --sampleNum 1 \
                         --log ${tensorboard_folder} \
-                        --lr 0.001 \
+                        --lr 0.0001 \
                         --dist TRUE \
                         --modelName StereoA \
                         --port ${dist_port} \

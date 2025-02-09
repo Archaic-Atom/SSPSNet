@@ -93,7 +93,7 @@ class StereoAInterface(jf.UserTemplate.ModelHandlerTemplate):
 
     def loss(self, output_data: list, label_data: list, model_id: int) -> list:
         # return loss
-        args, loss, id_three_px = self.__args, None, 1
+        args, loss, _ = self.__args, None, 0
 
         if self.ID_MODEL == model_id:
             left_img_disp = label_data[self.ID_LEFT_DISP_GT]
@@ -146,7 +146,7 @@ class StereoAInterface(jf.UserTemplate.ModelHandlerTemplate):
             self._load_pre_trained_model(model, checkpoint)
             jf.log.info("load the pretrained model")
         else:
-            model.load_state_dict(checkpoint['model_0'], strict=True)
+            model.load_state_dict(checkpoint['model_0'], strict=False)
             jf.log.info("load the old model")
         return True
 
@@ -155,7 +155,7 @@ class StereoAInterface(jf.UserTemplate.ModelHandlerTemplate):
         args = self.__args
         if args.load_pre_train_model_opt:
             return True
-        return False
+        return True
 
     # Optional
     def save_model(self, epoch: int, model_list: list, opt_list: list) -> dict:
