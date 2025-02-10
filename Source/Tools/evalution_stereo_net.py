@@ -24,9 +24,8 @@ def read_label_list(list_path: str):
     return gt_dsp_path
 
 
-def d_1(res: torch.tensor, gt: torch.tensor, start_threshold: int = 2,
-        threshold_num: int = 4, relted_error: float = 0.05,
-        invaild_value: int = 0, max_disp: int = 192) -> torch.tensor:
+def d_1(res: torch.Tensor, gt: torch.Tensor, start_threshold: int = 2, threshold_num: int = 4,
+        relted_error: float = 0.05, invaild_value: int = 0, max_disp: int = 192) -> torch.Tensor:
     mask = (gt != invaild_value) & (gt < max_disp)
     # mask = (gt != invaild_value)
     mask.detach_()
@@ -48,11 +47,8 @@ def d_1(res: torch.tensor, gt: torch.tensor, start_threshold: int = 2,
 
 def read_pfm(filename: str) -> tuple:
     file = open(filename, 'rb')
-    color = None
-    width = None
-    height = None
-    scale = None
-    endian = None
+    color, endian = None, None
+    width, height, scale = None, None, None
 
     header = file.readline().decode('utf-8').rstrip()
     if header == 'PF':
@@ -70,35 +66,29 @@ def read_pfm(filename: str) -> tuple:
 
     scale = float(file.readline().rstrip())
     if scale < 0:  # little-endian
-        endian = '<'
-        scale = -scale
+        endian, scale = '<', -scale
     else:
         endian = '>'  # big-endian
 
     data = np.fromfile(file, endian + 'f')
     shape = (height, width, 3) if color else (height, width)
 
-    data = np.reshape(data, shape)
-    data = np.flipud(data)
+    data = np.flipud(np.reshape(data, shape))
     return data, scale
 
 
 class Evalution(nn.Module):
     """docstring for Evalution"""
 
-    def __init__(self, start_threshold: int = 2,
-                 threshold_num: int = 4, relted_error: float = 0.05,
-                 invaild_value: int = 0):
+    def __init__(self, start_threshold: int = 2, threshold_num: int = 4,
+                 relted_error: float = 0.05, invaild_value: int = 0):
         super().__init__()
-        self._start_threshold = start_threshold
-        self._threshold_num = threshold_num
-        self._relted_error = relted_error
-        self._invaild_value = invaild_value
+        self._start_threshold, self._threshold_num = start_threshold, threshold_num
+        self._relted_error, self._invaild_value = relted_error, invaild_value
 
     def forward(self, res, gt):
-        return d_1(res, gt, self._start_threshold,
-                   self._threshold_num, self._relted_error,
-                   self._invaild_value)
+        return d_1(res, gt, self._start_threshold, self._threshold_num,
+                   self._relted_error, self._invaild_value)
 
 
 def read_dsp(path: str) -> np.array:
@@ -115,24 +105,18 @@ def read_dsp(path: str) -> np.array:
 
 
 def get_data(img_path: str, gt_path: str) -> np.array:
-    img = read_dsp(img_path)
-    img_gt = read_dsp(gt_path)
-    return img, img_gt
+    return data2cuda(read_dsp(img_path), read_dsp(gt_path))
 
 
-def data2cuda(img: np.array, img_gt: np.array) -> torch.tensor:
+def data2cuda(img: np.array, img_gt: np.array) -> torch.Tensor:
     img = torch.from_numpy(img).float()
     img_gt = torch.from_numpy(img_gt.copy()).float()
-
-    img = Variable(img, requires_grad=False)
-    img_gt = Variable(img_gt, requires_grad=False)
-    return img, img_gt
+    return Variable(img, requires_grad=False), Variable(img_gt, requires_grad=False)
 
 
 def print_total(total: np.array, err_total: int,
                 total_img_num: int, threshold_num: int) -> str:
-    offset = 1
-    str_data = 'total '
+    offset, str_data = 1, 'total '
     for j in range(threshold_num):
         d1_str = '%dpx: %f ' % (j + offset, total[j] / total_img_num)
         str_data = str_data + d1_str
@@ -140,43 +124,38 @@ def print_total(total: np.array, err_total: int,
     return str_data
 
 
-def cal_total(id_num: int, total: np.array, err_total: int,
-              acc_res: torch.tensor, mae: torch.tensor,
-              threshold_num: int) -> None:
+def cal_total(id_num: int, total: np.array, err_total: int, acc_res: torch.Tensor,
+              mae: torch.Tensor, threshold_num: int) -> None:
     str_data = str(id_num) + ' '
     for i in range(threshold_num):
-        d1_res = acc_res[i].cpu()
-        d1_res = d1_res.detach().numpy()
+        d1_res = acc_res[i].cpu().detach().numpy()
         total[i] = total[i] + d1_res
         str_data = str_data + str(d1_res) + ' '
 
-    mae_res = mae.cpu()
-    mae_res = mae_res.detach().numpy()
+    mae_res = mae.cpu().detach().numpy()
     err_total = err_total + mae_res
-
-    str_data = str_data + str(mae_res)
+    print(str_data + str(mae_res))
     return total, err_total
 
 
 def parser_args() -> object:
-    parser = argparse.ArgumentParser(
-        description="The Evalution process")
-    parser.add_argument('--img_path_format', type=str,
-                        default='./ResultImg/%06d_10.png',
+    parser = argparse.ArgumentParser(description="The Evalution process")
+    parser.add_argument('--img_path_format', type=str, default='./ResultImg/%06d_10.png',
                         help='img_path_format')
-    parser.add_argument('--gt_list_path', type=str,
-                        default='./Datasets/sceneflow_stereo_testing_list.csv',
+    parser.add_argument('--gt_list_path', type=str, default='./Datasets/sceneflow_stereo_testing_list.csv',
                         help='gt list path')
-    parser.add_argument('--epoch', type=int,
-                        default=0, help='epoch num')
-    parser.add_argument('--output_path', type=str,
-                        default='./Result/test_output.txt',
+    parser.add_argument('--epoch', type=int, default=0, help='epoch num')
+    parser.add_argument('--output_path', type=str, default='./Result/test_output.txt',
                         help='output file')
-    parser.add_argument('--invaild_value', type=int,
-                        default=0,
+    parser.add_argument('--invaild_value', type=int, default=0,
                         help='invaild value')
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
+
+
+def write_results(output_path: str, epoch: int, data_str: str) -> None:
+    fd_file = jf.FileHandler.open_file(output_path, True)
+    jf.FileHandler.write_file(fd_file, f'epoch: {epoch}, {data_str}')
+    print(data_str)
 
 
 def evalution(epoch: int, img_path_format: str, gt_list_path: str,
@@ -184,45 +163,29 @@ def evalution(epoch: int, img_path_format: str, gt_list_path: str,
     gt_dsp_path = read_label_list(gt_list_path)
     total_img_num = len(gt_dsp_path)
 
-    start_threshold = 1
-    threshold_num = 5
-
     # Variable
-    total = np.zeros(threshold_num)
-    err_total = 0
+    start_threshold, threshold_num = 1, 5
+    total, err_total = np.zeros(threshold_num), 0
 
     # push model to CUDA
-    eval_model = Evalution(start_threshold=start_threshold,
-                           threshold_num=threshold_num,
-                           invaild_value=invaild_value)
-    eval_model = torch.nn.DataParallel(eval_model).cuda()
-    for i in range(total_img_num):
-        img_path = img_path_format % (i)
-        gt_path = gt_dsp_path[i]
+    eval_model = torch.nn.DataParallel(
+        Evalution(start_threshold=start_threshold, threshold_num=threshold_num,
+                  invaild_value=invaild_value)).cuda()
 
-        img, img_gt = get_data(img_path, gt_path)
-        img, img_gt = data2cuda(img, img_gt)
+    for i in range(total_img_num):
+        img, img_gt = get_data(img_path_format % (i), gt_dsp_path[i])
         acc_res, mae = eval_model(img, img_gt)
-        print(i, acc_res[1], mae)
-        total, err_total = cal_total(i, total,
-                                     err_total, acc_res,
+        total, err_total = cal_total(i, total, err_total, acc_res,
                                      mae, threshold_num)
 
-    data_str = print_total(total, err_total, total_img_num, threshold_num)
-    print(data_str)
-    fd_file = jf.FileHandler.open_file(output_path, True)
-    jf.FileHandler.write_file(fd_file, f'epoch: {epoch}, {data_str}')
+    write_results(output_path, epoch,
+                  print_total(total, err_total, total_img_num, threshold_num))
 
 
 def main():
     args = parser_args()
     evalution(args.epoch, args.img_path_format, args.gt_list_path,
               args.output_path, args.invaild_value)
-    # setting
-    # img_path_format = args.img_path_format
-    # gt_list_path = './Datasets/scene_flow_testing_list.csv'
-    # gt_list_path = './Datasets/kitti2012_training_list.csv'
-    # gt_list_path = args.gt_list_path
 
 
 if __name__ == '__main__':
