@@ -19,7 +19,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5 nohup python -u Source/main.py \
                         --mode train \
                         --batchSize 3 \
                         --gpu 6 \
-                        --trainListPath ./Datasets/sceneflow_stereo_training_list.csv\
+                        --trainListPath ./Datasets/cretereo_training_list.csv\
                         --valListPath ./Datasets/sceneflow_stereo_val_list.csv \
                         --imgWidth 518 \
                         --imgHeight 266 \
@@ -36,7 +36,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5 nohup python -u Source/main.py \
                         --modelDir ./pre_trained/ \
                         --debug False \
                         --auto_save_num 1 \
-                        --dataset sceneflow > ${log_file} 2>&1 &
+                        --dataset crestereo > ${log_file} 2>&1 &
 echo "You can use the command (>> tail -f ${log_file}) to watch the training process!"
 
 echo "Start the tensorboard at port:" ${tensorboard_port}

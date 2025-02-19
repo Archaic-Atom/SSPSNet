@@ -175,7 +175,7 @@ class PSMNet(nn.Module):
                              nn.ReLU(inplace=True),
                              nn.Conv3d(32, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-    def _regress(self, classif_fn, size, cost_feat, win_s, probability=0.4) -> tuple:
+    def _regress(self, classif_fn, size, cost_feat, win_s, probability=0.1) -> tuple:
         cost = classif_fn(cost_feat)
         cost = F.interpolate(cost, size, mode='trilinear', align_corners=True)
         cost = torch.squeeze(cost, 1)
