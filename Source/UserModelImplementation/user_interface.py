@@ -30,6 +30,9 @@ class UserInterface(jf.UserTemplate.NetWorkInferenceTemplate):
         parser.add_argument('--pre_train_opt', type=UserInterface.__str2bool,
                             default=user_def.PRE_TRAIN_OPT,
                             help='pre-trained option')
+        parser.add_argument('--load_pre_train_model_opt', type=UserInterface.__str2bool,
+                            default=user_def.LOAD_PRE_TRAIN_MODEL_OPT,
+                            help='load pre-train model option')
         return parser
 
     @staticmethod

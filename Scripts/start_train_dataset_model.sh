@@ -3,8 +3,10 @@
 tensorboard_port=6234
 dist_port=8809
 tensorboard_folder='./log/'
+log_file='TrainRun_mmrf.log'
 echo "The tensorboard_port:" ${tensorboard_port}
 echo "The dist_port:" ${dist_port}
+
 
 # command
 # delete the previous tensorboard files
@@ -13,11 +15,11 @@ if [ -d "${tensorboard_folder}" ]; then
 fi
 
 echo "Begin to train the model!"
-CUDA_VISIBLE_DEVICES=0,2,3,6 nohup python -u Source/main.py \
+CUDA_VISIBLE_DEVICES=6,7 nohup python -u Source/main.py \
                         --mode train \
-                        --batchSize 24 \
-                        --gpu 4 \
-                        --trainListPath ./Datasets/sceneflow_stereo_training_list.csv \
+                        --batchSize 4 \
+                        --gpu 2 \
+                        --trainListPath ./Datasets/sceneflow_stereo_training_list.csv\
                         --valListPath ./Datasets/sceneflow_stereo_val_list.csv \
                         --imgWidth 448 \
                         --imgHeight 224 \
@@ -27,15 +29,15 @@ CUDA_VISIBLE_DEVICES=0,2,3,6 nohup python -u Source/main.py \
                         --valImgNum 0 \
                         --sampleNum 1 \
                         --log ${tensorboard_folder} \
-                        --lr 0.0001 \
-                        --dist FALSE \
-                        --modelName FANet \
+                        --lr 0.001 \
+                        --dist TRUE \
+                        --modelName StereoT \
                         --port ${dist_port} \
-                        --modelDir ./Checkpoint/ \
+                        --modelDir ./Checkpoint_stereoT/ \
                         --debug False \
                         --auto_save_num 1 \
-                        --dataset sceneflow > TrainRun.log 2>&1 &
-echo "You can use the command (>> tail -f TrainRun.log) to watch the training process!"
+                        --dataset sceneflow > ${log_file} 2>&1 &
+echo "You can use the command (>> tail -f ${log_file}) to watch the training process!"
 
 echo "Start the tensorboard at port:" ${tensorboard_port}
 nohup tensorboard --logdir ${tensorboard_folder} --port ${tensorboard_port} \
@@ -43,4 +45,4 @@ nohup tensorboard --logdir ${tensorboard_folder} --port ${tensorboard_port} \
 echo "All processes have started!"
 
 echo "Begin to watch TrainRun.log file!"
-tail -f TrainRun.log
+tail -f ${log_file}

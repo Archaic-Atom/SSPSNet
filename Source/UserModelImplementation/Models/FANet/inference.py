@@ -132,7 +132,7 @@ class FANetInterface(jf.UserTemplate.ModelHandlerTemplate):
     # Optional
     def load_opt(self, opt: object, checkpoint: dict, model_id: int) -> bool:
         # return False
-        return True
+        return False
 
     # Optional
     def save_model(self, epoch: int, model_list: list, opt_list: list) -> dict:

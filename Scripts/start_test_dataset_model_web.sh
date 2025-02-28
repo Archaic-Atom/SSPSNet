@@ -1,6 +1,6 @@
 #!/bin/bash
 # parameter
-test_gpus_id=2
+test_gpus_id=7
 eva_gpus_id=0
 test_list_path='./Datasets/sceneflow_stereo_testing_list.csv'
 evalution_format='training'
@@ -13,8 +13,8 @@ CUDA_VISIBLE_DEVICES=${test_gpus_id} python -u Source/main.py \
                         --batchSize 1 \
                         --gpu 1 \
                         --trainListPath ${test_list_path} \
-                        --imgWidth 966 \
-                        --imgHeight 546 \
+                        --imgWidth 1288 \
+                        --imgHeight 728 \
                         --dataloaderNum 4 \
                         --maxEpochs 1 \
                         --imgNum 200 \
@@ -22,8 +22,8 @@ CUDA_VISIBLE_DEVICES=${test_gpus_id} python -u Source/main.py \
                         --lr 0.0001 \
                         --log ./TestLog/ \
                         --dist False \
-                        --modelName FANet \
+                        --modelName StereoA \
                         --outputDir ./TestResult/ \
-                        --modelDir ./Checkpoint/ \
+                        --modelDir /data/raozhibo/Documents/Programs/SAStereo/Checkpoint_stereoA_sf/model_epoch_35.pth \
                         --dataset sceneflow
 echo "Finish!"
