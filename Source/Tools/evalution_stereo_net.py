@@ -118,23 +118,26 @@ def print_total(total: np.array, err_total: int,
                 total_img_num: int, threshold_num: int) -> str:
     offset, str_data = 1, 'total '
     for j in range(threshold_num):
-        d1_str = '%dpx: %f ' % (j + offset, total[j] / total_img_num)
+        d1_str = '%dpx: %0.4f ' % (j + offset, total[j] / total_img_num)
         str_data = str_data + d1_str
-    str_data = str_data + 'mae: %f' % (err_total / total_img_num)
+    str_data = str_data + 'mae: %.4f' % (err_total / total_img_num)
     return str_data
 
 
 def cal_total(id_num: int, total: np.array, err_total: int, acc_res: torch.Tensor,
               mae: torch.Tensor, threshold_num: int) -> None:
-    str_data = str(id_num) + ' '
+    str_data = str('%.4d ' % id_num)
     for i in range(threshold_num):
         d1_res = acc_res[i].cpu().detach().numpy()
         total[i] = total[i] + d1_res
-        str_data = str_data + str(d1_res) + ' '
+        str_data = str_data + '%.4f ' % d1_res
 
     mae_res = mae.cpu().detach().numpy()
     err_total = err_total + mae_res
-    print(str_data + str(mae_res))
+
+    labled = ' (large)' if mae_res > 1.5 else ' '
+
+    print(str_data + '%.4f ' % mae_res + labled)
     return total, err_total
 
 
