@@ -23,7 +23,7 @@ def convbn_3d(in_planes, out_planes, kernel_size, stride, pad):
 
 
 class DisparityRegression(nn.Module):
-    def __init__(self, start_disp, maxdisp, win_size):
+    def __init__(self, start_disp, maxdisp, win_size, ):
         super().__init__()
         self.max_disp = maxdisp
         self.win_size = win_size
@@ -175,7 +175,7 @@ class PSMNet(nn.Module):
                              nn.ReLU(inplace=True),
                              nn.Conv3d(32, 1, kernel_size=3, padding=1, stride=1, bias=False))
 
-    def _regress(self, classif_fn, size, cost_feat, win_s, probability=0.1) -> tuple:
+    def _regress(self, classif_fn, size, cost_feat, win_s, probability=0.2) -> tuple:
         cost = classif_fn(cost_feat)
         cost = F.interpolate(cost, size, mode='trilinear', align_corners=True)
         cost = torch.squeeze(cost, 1)
@@ -185,7 +185,7 @@ class PSMNet(nn.Module):
         pred = DisparityRegression(self.start_disp, self.maxdisp, win_size = win_s)(distribute)
         return pred, distribute, mask, valid_num
 
-    def forward(self, cost, size):
+    def forward(self, cost, size, confidence_level):
         cost0 = self.dres0(cost)
         cost0 = self.dres1(cost0) + cost0
         out1 = self.dres2(cost0)
@@ -196,7 +196,8 @@ class PSMNet(nn.Module):
         if self.training:
             pred1, distribute1, _, _ = self._regress(self.classif1, size, out1, win_s)
             pred2, distribute2, _, _ = self._regress(self.classif2, size, out2, win_s)
-        pred3, distribute3, mask, valid_num = self._regress(self.classif3, size, out3, win_s)
+        pred3, distribute3, mask, valid_num = self._regress(
+            self.classif3, size, out3, win_s, confidence_level)
 
         if self.training:
             res = [pred1, pred2, pred3]

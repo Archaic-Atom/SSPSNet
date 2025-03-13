@@ -56,11 +56,11 @@ def main() -> int:
 
     # 示例调用
     disparity_to_pointcloud_with_color(
-        '/Users/rhc/0001_L.png',
+        '/Users/rhc/ZED/7_720/images/left_007.png',
         # '/Users/rhc/3_720/images/left_000.png',       # 左图路径
-        '/Users/rhc/0001_L.png',   # 视差图路径
-        f=521.3689575195312,          # 焦距（需根据实际标定修改）
-        B=120.02717590332031,           # 基线（需根据实际标定修改）
+        '/Users/rhc/left_007_s3bS11O.png',   # 视差图路径
+        f =521.3689575195312 / 2,          # 焦距（需根据实际标定修改）
+        B =120.02717590332031 / 2,           # 基线（需根据实际标定修改）
         output_xyzrgb_path='/Users/rhc/1.txt'
     )
 

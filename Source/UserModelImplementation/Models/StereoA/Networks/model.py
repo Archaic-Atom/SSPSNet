@@ -24,10 +24,11 @@ class StereoA(nn.Module):
     GROUP_NUM = 512
 
     def __init__(self, in_channles: int, start_disp: int, disp_num: int,
-                 backbone: str, pre_train_opt: bool) -> None:
+                 backbone: str, pre_train_opt: bool, confidence_level: float) -> None:
         super().__init__()
         out_channels = [256, 512, 1024, 1024]
         self.start_disp, self.disp_num = start_disp, disp_num
+        self.confidence_level = confidence_level
         self._h, self._w = None, None
         self.in_channles, self.pre_train_opt = in_channles, pre_train_opt
         self.pretrained = self._get_feature_extraction(backbone)
@@ -103,7 +104,9 @@ class StereoA(nn.Module):
         return left_img_final, right_img_final
 
     def _matching_module_proc(self, cost: torch.Tensor) -> torch.Tensor:
-        return self.matching_module(cost, [self.disp_num, self._h, self._w])
+        return self.matching_module(cost,
+                                    [self.disp_num, self._h, self._w],
+                                    self.confidence_level)
 
     def _prompt_proc(self, disp_list, left_img, right_img, size):
         if self.training:

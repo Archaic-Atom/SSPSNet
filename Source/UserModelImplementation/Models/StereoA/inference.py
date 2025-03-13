@@ -42,7 +42,10 @@ class StereoAInterface(jf.UserTemplate.ModelHandlerTemplate):
     def get_model(self) -> list:
         args = self.__args
         # return model
-        model = StereoA(3, args.start_disp, args.disp_num, 'dinov2', args.pre_train_opt)
+        model = StereoA(3, args.start_disp,
+                        args.disp_num, 'dinov2',
+                        args.pre_train_opt,
+                        args.confidence_level)
 
         if not args.pre_train_opt:
             for name, param in model.named_parameters():
