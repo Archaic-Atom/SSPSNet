@@ -33,6 +33,9 @@ class UserInterface(jf.UserTemplate.NetWorkInferenceTemplate):
         parser.add_argument('--load_pre_train_model_opt', type=UserInterface.__str2bool,
                             default=user_def.LOAD_PRE_TRAIN_MODEL_OPT,
                             help='load pre-train model option')
+        parser.add_argument('--confidence_level', type=float,
+                            default=user_def.CONFIDENCE_LEVEL,
+                            help='confidence level')
         return parser
 
     @staticmethod

@@ -23,7 +23,7 @@ def reconstruct_right_image(left_image_path, disparity_map_path, baseline=0.54, 
 
 # 示例使用
 left_image_path = "/Users/rhc/resize_left_000.png"
-disparity_map_path = "/Users/rhc/Downloads/resize_left_000_uaxGSBN.png"
+disparity_map_path = "/Users/rhc/resize_left_000_d.png"
 right_image = reconstruct_right_image(left_image_path, disparity_map_path)
 cv2.imwrite("Users/rhc/reconstructed_right.png", right_image)
 cv2.imshow("Right Image", right_image)

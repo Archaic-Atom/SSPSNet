@@ -25,8 +25,11 @@ def read_label_list(list_path: str):
 
 
 def d_1(res: torch.Tensor, gt: torch.Tensor, start_threshold: int = 2, threshold_num: int = 4,
-        relted_error: float = 0.05, invaild_value: int = 0, max_disp: int = 192) -> torch.Tensor:
+        relted_error: float = 0.05, invaild_value: int = 0,
+        max_disp: int = 192, mask_img: bool = False) -> torch.Tensor:
     mask = (gt != invaild_value) & (gt < max_disp)
+    if mask_img:
+        mask = mask & (res > invaild_value)
     # mask = (gt != invaild_value)
     mask.detach_()
     acc_res = []
@@ -86,9 +89,9 @@ class Evalution(nn.Module):
         self._start_threshold, self._threshold_num = start_threshold, threshold_num
         self._relted_error, self._invaild_value = relted_error, invaild_value
 
-    def forward(self, res, gt):
+    def forward(self, res, gt, mask_img):
         return d_1(res, gt, self._start_threshold, self._threshold_num,
-                   self._relted_error, self._invaild_value)
+                   self._relted_error, self._invaild_value, mask_img=mask_img)
 
 
 def read_dsp(path: str) -> np.array:
@@ -147,11 +150,13 @@ def parser_args() -> object:
                         help='img_path_format')
     parser.add_argument('--gt_list_path', type=str, default='./Datasets/sceneflow_stereo_testing_list.csv',
                         help='gt list path')
-    parser.add_argument('--epoch', type=int, default=0, help='epoch num')
+    parser.add_argument('--epoch', type=float, default=0, help='epoch num')
     parser.add_argument('--output_path', type=str, default='./Result/test_output.txt',
                         help='output file')
     parser.add_argument('--invaild_value', type=int, default=0,
                         help='invaild value')
+    parser.add_argument('--mask_img', type=bool, default=False,
+                        help='Sparse image')
     return parser.parse_args()
 
 
@@ -162,7 +167,7 @@ def write_results(output_path: str, epoch: int, data_str: str) -> None:
 
 
 def evalution(epoch: int, img_path_format: str, gt_list_path: str,
-              output_path: str, invaild_value: int) -> None:
+              output_path: str, invaild_value: int, mask_img: bool) -> None:
     gt_dsp_path = read_label_list(gt_list_path)
     total_img_num = len(gt_dsp_path)
 
@@ -177,7 +182,7 @@ def evalution(epoch: int, img_path_format: str, gt_list_path: str,
 
     for i in range(total_img_num):
         img, img_gt = get_data(img_path_format % (i), gt_dsp_path[i])
-        acc_res, mae = eval_model(img, img_gt)
+        acc_res, mae = eval_model(img, img_gt, mask_img)
         total, err_total = cal_total(i, total, err_total, acc_res,
                                      mae, threshold_num)
 
@@ -188,7 +193,7 @@ def evalution(epoch: int, img_path_format: str, gt_list_path: str,
 def main():
     args = parser_args()
     evalution(args.epoch, args.img_path_format, args.gt_list_path,
-              args.output_path, args.invaild_value)
+              args.output_path, args.invaild_value, args.mask_img)
 
 
 if __name__ == '__main__':
