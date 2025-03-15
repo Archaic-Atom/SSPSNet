@@ -10,6 +10,7 @@ class StereoDataloader(jf.UserTemplate.DataHandlerTemplate):
     """docstring for DataHandlerTemplate"""
     MODEL_ID = 0                                       # Model
     ID_INTERVAL_STEREO = 2                             # stereo
+    MASK_STAR_ID = 200000
 
     def __init__(self, args: object) -> object:
         super().__init__(args)
@@ -62,7 +63,7 @@ class StereoDataloader(jf.UserTemplate.DataHandlerTemplate):
             self.__saver.save_output(
                 (output_data[mask_position].squeeze(id_c).cpu().detach().numpy() > 0) *
                 output_data[last_position].squeeze(id_c).cpu().detach().numpy(),
-                img_id + 200000,
+                img_id + self.MASK_STAR_ID,
                 args.dataset, supplement, time.time() - self.__start_time)
 
     def show_intermediate_result(self, epoch: int,

@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*
 import JackFramework as jf
-# from .SAStereo import SAStereoInterface
-# from .FANet import FANetInterface
-# from .MMRF import MMRFInterface
-from .Transformer import StereoTInterface
 from .StereoA import StereoAInterface
+from .StereoB import StereoBInterface
 
 
 def _get_model_dict() -> dict:
@@ -12,7 +9,7 @@ def _get_model_dict() -> dict:
     #        'FANet': FANetInterface,
     #        'MMRF': MMRFInterface,
     #       'StereoT': StereoTInterface}
-    return {'StereoT': StereoTInterface,
+    return {'StereoB': StereoBInterface,
             'StereoA': StereoAInterface, }
 
 

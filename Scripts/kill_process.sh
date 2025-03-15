@@ -1,7 +1,7 @@
 #!/bin/bash
 # parameters
-tensorboard_port=6234
-dist_port=8809
+tensorboard_port=6237
+dist_port=8819
 
 echo "The tensorboard_port:"
 echo ${tensorboard_port}
