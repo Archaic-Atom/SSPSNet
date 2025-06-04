@@ -1,6 +1,6 @@
 #!/bin/bash
 test_gpus_id=0
-test_list_path='./Datasets/kitti2012_stereo_testing_list.csv'
+test_list_path='./Datasets/kitti2015_stereo_testing_list.csv'
 model_dir=./Checkpoint_kitti2012/
 
 rm -r ResultImg
@@ -22,8 +22,9 @@ CUDA_VISIBLE_DEVICES=${test_gpus_id} python -u Source/main.py \
                             --outputDir ./TestResult/ \
                             --modelDir ${model_dir} \
                             --resultImgDir ./ResultImg/ \
-                            --dataset kitti2012
+                            --dataset kitti2015
 
-cd ResultImg
-zip -r disp_0.zip *
-mv disp_0.zip ../Submission/
+mv ResultImg disp_0
+zip -r disp_0.zip disp_0
+mv disp_0.zip ./Submission/
+mv disp_0 ResultImg

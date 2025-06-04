@@ -13,7 +13,7 @@ def resize_half(input_path, output_path):
     height, width = image.shape[:2]
 
     # 计算缩放后的尺寸（原尺寸的一半）
-    new_width, new_height = width // 2, height // 2
+    new_width, new_height = width // 4, height // 4
 
     # 使用双线性插值缩放
     resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
@@ -24,8 +24,8 @@ def resize_half(input_path, output_path):
 
 
 # 设置图片路径
-image_paths = ["/Users/rhc/WorkSpace/Tmp/ICCV2025/1_720/images/left_000.png",
-               "/Users/rhc/WorkSpace/Tmp/ICCV2025/1_720/images/right_000.png"]  # 替换为你的图片路径
+image_paths = ["/Users/rhc/20250516/left1.jpg",
+               "/Users/rhc/20250516/right11.jpg"]  # 替换为你的图片路径
 output_paths = ["/Users/rhc/resize_left_000.png", "/Users/rhc/resize_right_000.png"]
 
 # 处理两张图片

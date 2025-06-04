@@ -8,7 +8,8 @@ def _get_dataloaders_dict() -> dict:
             'kitti2015': StereoDataloader, 'crestereo': StereoDataloader,
             'eth3d': StereoDataloader, 'rob': StereoDataloader,
             'middlebury': StereoDataloader, 'US3D': StereoDataloader,
-            'whu': StereoDataloader}
+            'whu': StereoDataloader,
+            'synthetic': StereoDataloader, }
 
 
 def dataloaders_zoo(args: object, dataset_name: str) -> object:
