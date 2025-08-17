@@ -4,10 +4,10 @@ test_gpus_id=4
 eva_gpus_id=0
 test_list_path='./Datasets/kitti2012_stereo_training_list.csv'
 evalution_format='training'
-start_epoch=0
-epoch_num=43
+start_epoch=45
+epoch_num=46
 result_path=./Result/test_output_kitti2012.txt
-model_dir=./pre_trained/
+model_dir=./checkpoint_l/
 
 rm -r ${result_path}
 for((i=${start_epoch}; i<${start_epoch}+${epoch_num}; i++));
@@ -30,7 +30,7 @@ do
                             --lr 0.0001 \
                             --log ./TestLog/ \
                             --dist False \
-                            --modelName StereoA \
+                            --modelName StereoC \
                             --outputDir ./TestResult/ \
                             --modelDir ${model_path} \
                             --resultImgDir ./resultImg_kitti12/ \

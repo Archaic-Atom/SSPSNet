@@ -42,6 +42,10 @@ $ ./install.sh
 1. Get the Training list or Testing list （You need rewrite the code by your path, and my related demo code can be found in Source/Tools/genrate_**_traning_path.py）
 ```
 $ ./GenPath.sh
+DatasetListGenerator --dataset ETH3D --dataset_folder_path /data3/datasets/ETH/  --save_folder_path ./Datasets/
+DatasetListGenerator --dataset Middlebury --dataset_folder_path /data3/datasets/Middlebury/MiddEval3/  --save_folder_path ./Datasets/
+DatasetListGenerator --dataset KITTI2012 --dataset_folder_path /data3/datasets/Kitti2012  --save_folder_path ./Datasets/
+DatasetListGenerator --dataset KITTI2015 --dataset_folder_path /data3/datasets/Kitti  --save_folder_path ./Datasets/
 ```
 Please check the path. The source code in Source/Tools.
 

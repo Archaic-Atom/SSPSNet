@@ -1,0 +1,172 @@
+# -*- coding: utf-8 -*-
+# import torch.nn as nn
+from collections import OrderedDict
+import math
+import torch
+import torch.optim as optim
+from torch import nn
+import torch.nn.functional as F
+from functools import partial
+
+import JackFramework as jf
+
+
+import UserModelImplementation.user_define as user_def
+
+from ._load_pre_trained_model import LoadPreTrainedModel
+from .Networks import StereoA
+from ._loss import Loss
+from ._accuracy import Accuracy
+
+
+class StereoBInterface(jf.UserTemplate.ModelHandlerTemplate):
+    """docstring for DeepLabV3Plus"""
+    ID_MODEL = 0
+    ID_LEFT_DISP_GT = 0
+    ID_LEFT_IMG, ID_RIGHT_IMG, ID_DISP_IMG = 0, 1, 2
+
+    def __init__(self, args: object) -> object:
+        super().__init__(args)
+        self.__args = args
+        self._acc = Accuracy(args)
+        self._loss = Loss(args)
+        self._model = None
+
+    @staticmethod
+    def lr_lambda(epoch: int) -> float:
+        warmup_epochs = 40
+        cos_epoch = 1000
+        return (epoch / warmup_epochs if epoch < warmup_epochs
+                else 0.5 * (1.0 + math.cos(math.pi * (epoch - warmup_epochs) / cos_epoch)))
+
+    def get_model(self) -> list:
+        args = self.__args
+        # return model
+        model = StereoA(3, args.start_disp,
+                        args.disp_num, 'dinov2',
+                        args.pre_train_opt,
+                        args.confidence_level)
+
+        if not args.pre_train_opt:
+            for name, param in model.named_parameters():
+                if "pretrained" in name:
+                    param.requires_grad = False
+        return [model]
+
+    def optimizer(self, model: list, lr: float) -> list:
+        args = self.__args
+        # opt = optim.Adam(model[self.ID_MODEL].parameters(), lr=lr, betas=(0.9, 0.999))
+        opt = optim.AdamW(model[self.ID_MODEL].parameters(), lr=lr, weight_decay=1e-5)
+
+        if args.lr_scheduler:
+            batch_size = args.batchSize * args.gpu if args.dist else args.batchSize
+            step_num = args.imgNum // batch_size * args.maxEpochs
+            print(step_num)
+            sch = optim.lr_scheduler.OneCycleLR(opt, lr, step_num + 100,
+                                                pct_start=0.01, cycle_momentum=False,
+                                                anneal_strategy='linear')
+            # sch = optim.lr_scheduler.LambdaLR(opt, lr_lambda=self.lr_lambda)
+        else:
+            sch = None
+        return [opt], [sch]
+
+    def lr_scheduler(self, sch: object, ave_loss: list, sch_id: int) -> None:
+        # how to do schenduler
+        if self.ID_MODEL == sch_id:
+            sch.step()
+
+    def inference(self, model: nn.Module, input_data: list, model_id: int) -> list:
+        # args = self.__args
+        # return output
+        if self.ID_MODEL == model_id:
+            outputs = jf.Tools.convert2list(model(input_data[self.ID_LEFT_IMG],
+                                                  input_data[self.ID_RIGHT_IMG]))
+        return outputs
+
+    def accuracy(self, output_data: list, label_data: list, model_id: int) -> list:
+        args, acc, id_three_px = self.__args, None, 1
+
+        if self.ID_MODEL == model_id:
+            left_img_disp = label_data[self.ID_LEFT_DISP_GT]
+            mask = self._get_mask(left_img_disp)
+
+            if args.pre_train_opt:
+                acc = self._acc.feature_alignment_accuracy(
+                    output_data[self.ID_LEFT_IMG],
+                    output_data[self.ID_RIGHT_IMG],
+                    left_img_disp, mask)
+            else:
+                acc = self._acc.matching_accuracy(
+                    output_data, left_img_disp * mask, id_three_px)
+        return acc
+
+    def loss(self, output_data: list, label_data: list, model_id: int) -> list:
+        # return loss
+        args, loss, _ = self.__args, None, 0
+
+        if self.ID_MODEL == model_id:
+            left_img_disp = label_data[self.ID_LEFT_DISP_GT]
+            mask = self._get_mask(left_img_disp)
+
+            if args.pre_train_opt:
+                loss = self._loss.feature_alignment_loss(
+                    output_data[self.ID_LEFT_IMG],
+                    output_data[self.ID_RIGHT_IMG],
+                    left_img_disp, mask)
+            else:
+                loss = self._loss.matching_loss(
+                    output_data, left_img_disp, mask, True)
+        return loss
+
+    def _get_mask(self, left_img_disp: torch.Tensor) -> torch.Tensor:
+        args = self.__args
+        return (left_img_disp < args.start_disp + args.disp_num) & (left_img_disp > args.start_disp)
+
+    # Optional
+    def pretreatment(self, epoch: int, rank: object) -> None:
+        # do something before training epoch
+        pass
+
+    # Optional
+    def postprocess(self, epoch: int, rank: object,
+                    ave_tower_loss: list, ave_tower_acc: list) -> None:
+        # do something after training epoch
+        pass
+
+    @staticmethod
+    def _load_pre_trained_model(model: object, checkpoint: dict) -> None:
+        state_dict, off_set = OrderedDict(), 1
+        old_model_name = 'pipeline'
+        for key, value in checkpoint['state_dict'].items():
+            if old_model_name in key:
+                new_key = key[len(old_model_name) + off_set:]
+                state_dict[new_key] = value
+            else:
+                state_dict[key] = value
+
+        load_pre_trained_model = LoadPreTrainedModel()
+        load_pre_trained_model.load_state_dict(model, state_dict)
+
+    # Optional
+    def load_model(self, model: object, checkpoint: dict, model_id: int) -> bool:
+        assert model_id == self.ID_MODEL
+        args = self.__args
+        if args.load_pre_train_model_opt:
+            self._load_pre_trained_model(model, checkpoint)
+            jf.log.info("load the pretrained model")
+        else:
+            model.load_state_dict(checkpoint['model_0'], strict=False)
+            jf.log.info("load the old model")
+        return True
+
+    # Optional
+    def load_opt(self, opt: object, checkpoint: dict, model_id: int) -> bool:
+        args = self.__args
+        if args.load_pre_train_model_opt:
+            return True
+        return True
+
+    # Optional
+    def save_model(self, epoch: int, model_list: list, opt_list: list) -> dict:
+        # return None
+        return None
