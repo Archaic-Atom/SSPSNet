@@ -24,8 +24,8 @@ def resize_half(input_path, output_path):
 
 
 # 设置图片路径
-image_paths = ["/Users/rhc/20250516/left1.jpg",
-               "/Users/rhc/20250516/right11.jpg"]  # 替换为你的图片路径
+image_paths = ["/Users/rhc/test/l62.png",
+               "/Users/rhc/test/r62.png"]  # 替换为你的图片路径
 output_paths = ["/Users/rhc/resize_left_000.png", "/Users/rhc/resize_right_000.png"]
 
 # 处理两张图片

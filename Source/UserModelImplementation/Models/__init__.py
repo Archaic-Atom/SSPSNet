@@ -2,7 +2,6 @@
 import JackFramework as jf
 from .StereoA import StereoAInterface
 from .StereoB import StereoBInterface
-from .StereoC import StereoCInterface
 
 
 def _get_model_dict() -> dict:
@@ -11,8 +10,7 @@ def _get_model_dict() -> dict:
     #        'MMRF': MMRFInterface,
     #       'StereoT': StereoTInterface}
     return {'StereoB': StereoBInterface,
-            'StereoA': StereoAInterface,
-            'StereoC': StereoCInterface, }
+            'StereoA': StereoAInterface}
 
 
 def model_zoo(args: object, model_name: str) -> object:

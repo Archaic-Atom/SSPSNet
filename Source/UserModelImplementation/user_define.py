@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*
-LR_SCHEDULER = False
+LR_SCHEDULER = True
 # START_DISP = -64
 # DISP_NUM = 128
 # START_DISP = -128 # for whu
