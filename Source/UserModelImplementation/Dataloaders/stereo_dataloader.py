@@ -60,6 +60,7 @@ class StereoDataloader(jf.UserTemplate.DataHandlerTemplate):
             self.__saver.save_output(
                 output_data[last_position].squeeze(id_c).cpu().detach().numpy(), img_id,
                 args.dataset, supplement, time.time() - self.__start_time)
+            return
             self.__saver.save_output(
                 (output_data[mask_position].squeeze(id_c).cpu().detach().numpy() > 0) *
                 output_data[last_position].squeeze(id_c).cpu().detach().numpy(),

@@ -60,7 +60,7 @@ class StereoBInterface(jf.UserTemplate.ModelHandlerTemplate):
 
         if args.lr_scheduler:
             batch_size = args.batchSize * args.gpu if args.dist else args.batchSize
-            step_num = args.imgNum // batch_size * args.maxEpochs
+            step_num = (args.imgNum // batch_size+1) * args.maxEpochs
             print(step_num)
             sch = optim.lr_scheduler.OneCycleLR(opt, lr, step_num + 100,
                                                 pct_start=0.01, cycle_momentum=False,
