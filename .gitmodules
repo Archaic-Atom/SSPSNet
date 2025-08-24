@@ -7,3 +7,7 @@
 [submodule "Source/Libs/dinov2"]
 	path = Source/Libs/dinov2
 	url = git@github.com:facebookresearch/dinov2.git
+
+[submodule "Source/Libs/dinov3"]
+	path = Source/Libs/dinov3
+	url = git@github.com:facebookresearch/dinov3.git
