@@ -10,6 +10,8 @@ class JBUStack(torch.nn.Module):
         super().__init__(*args, **kwargs)
         self.up1 = JBULearnedRange(3, feat_dim, 32, radius=3)
         self.up2 = JBULearnedRange(3, feat_dim, 32, radius=3)
+        self.up3 = JBULearnedRange(3, feat_dim, 32, radius=3)
+        self.up4 = JBULearnedRange(3, feat_dim, 32, radius=3)
         self.fixup_proj = torch.nn.Sequential(
             torch.nn.Dropout2d(0.2),
             torch.nn.Conv2d(feat_dim, feat_dim, kernel_size=1))
