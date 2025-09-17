@@ -19,7 +19,7 @@ from ._loss import Loss
 from ._accuracy import Accuracy
 
 
-class StereoBInterface(jf.UserTemplate.ModelHandlerTemplate):
+class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
     """docstring for DeepLabV3Plus"""
     ID_MODEL = 0
     ID_LEFT_DISP_GT = 0
@@ -51,7 +51,7 @@ class StereoBInterface(jf.UserTemplate.ModelHandlerTemplate):
 
         if not args.pre_train_opt:
             for name, param in model.named_parameters():
-                if "pretrained" in name:
+                if "backbone" in name:
                     param.requires_grad = False
         return [model]
 

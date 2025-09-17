@@ -8,6 +8,7 @@ Result*/
 /*__pycache__*/
 Tmp/
 pre_trained/
+Weights/
 
 # user file
 sftp-config*.json

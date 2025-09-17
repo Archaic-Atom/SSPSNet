@@ -11,3 +11,6 @@
 [submodule "Source/Libs/dinov3"]
 	path = Source/Libs/dinov3
 	url = git@github.com:facebookresearch/dinov3.git
+[submodule "Source/Libs/FeatUp"]
+	path = Source/Libs/FeatUp
+	url = https://github.com/mhamilton723/FeatUp
