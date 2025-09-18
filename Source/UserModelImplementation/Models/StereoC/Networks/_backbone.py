@@ -6,7 +6,7 @@ from torch import nn
 ROOT_PATH = '/data3/raozhibo/SAStereo/'
 DINOv3_PATH = 'Source/Libs/dinov3/'
 DINOv2_PATH = 'Source/Libs/dinov2/'
-WEIGHTS_PATH = 'Weights/dinov3/dinov3_vith16plus_pretrain_lvd1689m-7c1da9a5.pth'
+WEIGHTS_PATH = 'Weights/dinov3/dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth'
 WEIGHTS_DINOV2_PATH = 'Weights/depth_anything/model.pth'
 
 
@@ -27,6 +27,7 @@ def _get_backbone_dict() -> dict:
 
 def get_dino_layers_id(model_name: str) -> list:
     layers_id_dict = {'dinov3_vith16plus': [7, 15, 23, 31],
+                      'dinov3_vitl16': [4, 11, 17, 23],
                       'dinov2_vitl14': [4, 11, 17, 23],
                       }
     assert model_name in layers_id_dict
