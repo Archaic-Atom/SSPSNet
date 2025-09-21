@@ -44,10 +44,7 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
     def get_model(self) -> list:
         args = self.__args
         # return model
-        model = StereoA(3, args.start_disp,
-                        args.disp_num, 'dinov2',
-                        args.pre_train_opt,
-                        args.confidence_level)
+        model = StereoA(3)
 
         if not args.pre_train_opt:
             for name, param in model.named_parameters():
@@ -57,7 +54,6 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
 
     def optimizer(self, model: list, lr: float) -> list:
         args = self.__args
-        # opt = optim.Adam(model[self.ID_MODEL].parameters(), lr=lr, betas=(0.9, 0.999))
         opt = optim.AdamW(model[self.ID_MODEL].parameters(), lr=lr, weight_decay=1e-5)
 
         if args.lr_scheduler:
@@ -82,13 +78,13 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
         # args = self.__args
         # return output
         if self.ID_MODEL == model_id:
-            outputs = jf.Tools.convert2list(model(input_data[self.ID_LEFT_IMG],
-                                                  input_data[self.ID_RIGHT_IMG]))
+            outputs = model(input_data[self.ID_LEFT_IMG],
+                            input_data[self.ID_RIGHT_IMG])
             if self._first_opt:
                 self._first_opt = False
             else:
                 self._sch.step()
-        return outputs
+        return [outputs]
 
     def accuracy(self, output_data: list, label_data: list, model_id: int) -> list:
         args, acc, id_three_px = self.__args, None, 1
@@ -103,8 +99,11 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
                     output_data[self.ID_RIGHT_IMG],
                     left_img_disp, mask)
             else:
+                match_out = output_data[0]
+
                 acc = self._acc.matching_accuracy(
-                    output_data, left_img_disp * mask, id_three_px)
+                    [match_out["disp_full"], match_out["sparse_prompt_full"]["disp_full"]],
+                    left_img_disp * mask, id_three_px)
         return acc
 
     def loss(self, output_data: list, label_data: list, model_id: int) -> list:
@@ -122,7 +121,7 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
                     left_img_disp, mask)
             else:
                 loss = self._loss.matching_loss(
-                    output_data, left_img_disp, mask, True)
+                    output_data, left_img_disp, mask)
         return loss
 
     def _get_mask(self, left_img_disp: torch.Tensor) -> torch.Tensor:
@@ -162,7 +161,7 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
             self._load_pre_trained_model(model, checkpoint)
             jf.log.info("load the pretrained model")
         else:
-            model.load_state_dict(checkpoint['model_0'], strict=False)
+            model.trainable_tail.load_state_dict(checkpoint['model_0'], strict=False)
             jf.log.info("load the old model")
         return True
 
@@ -176,4 +175,11 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
     # Optional
     def save_model(self, epoch: int, model_list: list, opt_list: list) -> dict:
         # return None
-        return None
+        assert len(model_list) == len(opt_list)
+        model_dict = {'epoch': epoch}
+        for i, _ in enumerate(model_list):
+            model_name = f'model_{i}'
+            opt_name = f'opt_{i}'
+            model_dict[model_name] = model_list[i].trainable_tail.state_dict()
+            model_dict[opt_name] = opt_list[i].state_dict()
+        return model_dict
