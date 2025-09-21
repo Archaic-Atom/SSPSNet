@@ -161,7 +161,8 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
             self._load_pre_trained_model(model, checkpoint)
             jf.log.info("load the pretrained model")
         else:
-            model.trainable_tail.load_state_dict(checkpoint['model_0'], strict=False)
+            model = self._unwrap_ddp(model)
+            model.trainable_tail.load_state_dict(checkpoint['model_0'], strict=True)
             jf.log.info("load the old model")
         return True
 
@@ -180,6 +181,11 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
         for i, _ in enumerate(model_list):
             model_name = f'model_{i}'
             opt_name = f'opt_{i}'
-            model_dict[model_name] = model_list[i].trainable_tail.state_dict()
+            model = self._unwrap_ddp(model_list[i])
+            model_dict[model_name] = model.trainable_tail.state_dict()
             model_dict[opt_name] = opt_list[i].state_dict()
         return model_dict
+
+    @staticmethod
+    def _unwrap_ddp(model):
+        return model.module if hasattr(model, "module") else model
