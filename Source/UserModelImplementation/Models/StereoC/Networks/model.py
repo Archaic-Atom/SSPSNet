@@ -41,6 +41,13 @@ class StereoA(nn.Module):
         self.build_cost_volume = self._build_cost_volume(256)
         self.feature_matching = self._build_feature_matching(64)
         self.sparse_prompt_full = self._build_sparse_prompt()
+        self.trainable_tail = nn.ModuleDict(dict(
+            resize_layers=self.resize_layers,
+            fusion=self.fusion,
+            build_cost_volume=self.build_cost_volume,
+            feature_matching=self.feature_matching,
+            sparse_prompt_full=self.sparse_prompt_full
+        ))
 
     def _get_resize_layers(self, in_channles: int) -> nn.Module:
         return nn.ModuleList([
@@ -87,26 +94,33 @@ class StereoA(nn.Module):
     def forward(self, left_img: torch.Tensor, right_img: torch.Tensor) -> torch.Tensor:
         left_feat, right_feat = self._feature_extraction_module_proc(left_img, right_img)
         cost = self.build_cost_volume(left_feat, right_feat, self.disp_num)
-        ret2 = self.feature_matching(cost, orig_hw=(left_img.shape[-2], left_img.shape[-1]))
+        match_out = self.feature_matching(cost, orig_hw=(left_img.shape[-2], left_img.shape[-1]))
+        band_offset_px = match_out.get("band_offset_px",
+                                       torch.tensor(0.0, device=match_out['disp_lr'].device))
+        band_offset_px = float(band_offset_px.item()
+                               if band_offset_px.numel() == 1 else float(band_offset_px))
 
-        disp_full2 = ret2["disp_full"]
-
-        print(disp_full2.shape)
-
-        out = self.sparse_prompt_full(P_lr=ret2["prob"],
-                                      orig_hw=(left_img.shape[-2], left_img.shape[-1]),
-                                      guidance=left_img,       # prob-dhw 模式可为 None
-                                      edge=None,               # 可选 [B,1,H,W]，没有就 None
-                                      occ=None,                 # 可选 [B,1,H,W]，没有就 None
-                                      min_conf=0.65, nms_ks=3, topk=8000,
-                                      iters=30, lam=0.8, lambda_e=2.0
-                                      # band_offset=0  # 若 cost 用了 dmin:dmax，传 dmin * (W/W4)
-                                      )
-        print(out["disp_full"].shape)
+        match_out["sparse_prompt_full"] = self.sparse_prompt_full(
+            P_lr=match_out["prob"],
+            orig_hw=(left_img.shape[-2], left_img.shape[-1]),
+            guidance=left_img,       # prob-dhw 模式可为 None
+            edge=None,               # 可选 [B,1,H,W]，没有就 None
+            occ=None,                 # 可选 [B,1,H,W]，没有就 None
+            min_conf=0.65, nms_ks=3, topk=8000,
+            iters=30, lam=0.8, lambda_e=2.0,
+            band_offset=band_offset_px  # 若 cost 用了 dmin:dmax，传 dmin * (W/W4)
+        )
+        return match_out
 
 
 if __name__ == '__main__':
     model = StereoA(3).cuda()
     rand_tensor = torch.rand(1, 3, 640, 320).cuda()
     model.eval()
-    model(rand_tensor, rand_tensor)
+    match_out = model(rand_tensor, rand_tensor)
+
+    print(match_out["disp_full"].shape)
+    print(match_out["disp_lr"].shape)
+    print(match_out["prob"].shape)
+    print(match_out["aux"]["disp1"].shape)
+    print(match_out["aux"]["prob1"].shape)

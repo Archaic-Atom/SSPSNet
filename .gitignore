@@ -18,3 +18,7 @@ sftp-config*.json
 # tmp file
 *.pyc
 *.DS_Store
+
+# IDE
+.vscode/
+.idea/

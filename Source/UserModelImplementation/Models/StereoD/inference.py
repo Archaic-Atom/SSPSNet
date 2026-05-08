@@ -19,7 +19,7 @@ from ._loss import Loss
 from ._accuracy import Accuracy
 
 
-class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
+class StereoDInterface(jf.UserTemplate.ModelHandlerTemplate):
     """docstring for DeepLabV3Plus"""
     ID_MODEL = 0
     ID_LEFT_DISP_GT = 0
@@ -44,7 +44,10 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
     def get_model(self) -> list:
         args = self.__args
         # return model
-        model = StereoA(3)
+        model = StereoA(3, args.start_disp,
+                        args.disp_num, 'dinov3',
+                        args.pre_train_opt,
+                        args.confidence_level)
 
         if not args.pre_train_opt:
             for name, param in model.named_parameters():
@@ -54,6 +57,7 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
 
     def optimizer(self, model: list, lr: float) -> list:
         args = self.__args
+        # opt = optim.Adam(model[self.ID_MODEL].parameters(), lr=lr, betas=(0.9, 0.999))
         opt = optim.AdamW(model[self.ID_MODEL].parameters(), lr=lr, weight_decay=1e-5)
 
         if args.lr_scheduler:
@@ -78,13 +82,13 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
         # args = self.__args
         # return output
         if self.ID_MODEL == model_id:
-            outputs = model(input_data[self.ID_LEFT_IMG],
-                            input_data[self.ID_RIGHT_IMG])
+            outputs = jf.Tools.convert2list(model(input_data[self.ID_LEFT_IMG],
+                                                  input_data[self.ID_RIGHT_IMG]))
             if self._first_opt:
                 self._first_opt = False
             else:
                 self._sch.step()
-        return [outputs]
+        return outputs
 
     def accuracy(self, output_data: list, label_data: list, model_id: int) -> list:
         args, acc, id_three_px = self.__args, None, 1
@@ -99,11 +103,8 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
                     output_data[self.ID_RIGHT_IMG],
                     left_img_disp, mask)
             else:
-                match_out = output_data[0]
-
                 acc = self._acc.matching_accuracy(
-                    [match_out["disp_full"], match_out["sparse_prompt_full"]["disp_full"]],
-                    left_img_disp * mask, id_three_px)
+                    output_data, left_img_disp * mask, id_three_px)
         return acc
 
     def loss(self, output_data: list, label_data: list, model_id: int) -> list:
@@ -121,7 +122,7 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
                     left_img_disp, mask)
             else:
                 loss = self._loss.matching_loss(
-                    output_data, left_img_disp, mask)
+                    output_data, left_img_disp, mask, True)
         return loss
 
     def _get_mask(self, left_img_disp: torch.Tensor) -> torch.Tensor:
@@ -162,7 +163,7 @@ class StereoCInterface(jf.UserTemplate.ModelHandlerTemplate):
             jf.log.info("load the pretrained model")
         else:
             model = self._unwrap_ddp(model)
-            model.trainable_tail.load_state_dict(checkpoint['model_0'], strict=True)
+            model.trainable_tail.load_state_dict(checkpoint['model_0'], strict=False)
             jf.log.info("load the old model")
         return True
 

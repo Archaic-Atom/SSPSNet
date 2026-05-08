@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-from __future__ import annotations
-from typing import Tuple, Optional, Dict
-
 import torch
 import torch.nn.functional as F
 import JackFramework as jf
 
 try:
     from ._warp import Warp
-    from .losses_prob import ProbVolumeLoss
+    from .Networks import build_gwc_volume
+    from .Networks import DispRegression
 except ImportError:
     from _warp import Warp
-    from losses_prob import ProbVolumeLoss
+    from Networks import build_gwc_volume
+    from Networks import DispRegression
 
 
 class Loss(object):
@@ -22,7 +21,8 @@ class Loss(object):
         super().__init__()
         self.__arg = args
         self._warp = Warp()
-        self.prob_loss = ProbVolumeLoss(radius=2, w_prob=0.02, w_prob1=0.02, w_entropy=0.01)
+        self._disp_regression = DispRegression(
+            [args.start_disp, args.start_disp + args.disp_num - 1])
 
     def matching_accuracy(self, disp_list: list, disp_label: torch.Tensor,
                           id_error_px: int = 1, invalid_value: int = 0) -> list:
@@ -41,6 +41,14 @@ class Loss(object):
         return torch.mean(torch.sum(torch.abs(left_feat - warped_right_img),
                                     dim=self.ID_CHANNEL, keepdim=True) * mask)
 
+    def _feature_matching_loss(self, left_feat: torch.Tensor, right_feat: torch.Tensor,
+                               disp_label: torch.Tensor, mask_disp: torch.Tensor) -> None:
+        args = self.__arg
+        cost = build_gwc_volume(left_feat, right_feat, args.start_disp, args.disp_num, 8)
+        cost = torch.mean(cost, dim=self.ID_CHANNEL, keepdim=False)
+        disp = self._disp_regression(-cost)
+        return F.smooth_l1_loss(disp[mask_disp.unsqueeze(1)], disp_label[mask_disp.unsqueeze(1)])
+
     @staticmethod
     def _disp2distribute(start_disp, disp_gt, max_disp, b=2):
         disp_gt = disp_gt.unsqueeze(1)
@@ -58,33 +66,29 @@ class Loss(object):
         ce_loss = torch.mean(ce_loss[mask])
         return ce_loss
 
-    def matching_loss(
-            self, disp_list: list, disp_label: torch.Tensor, mask_disp: torch.Tensor) -> torch.Tensor:
-        # args = self.__arg
-
-        # gt_distribute = self._disp2distribute(args.start_disp, disp_label, args.disp_num, b=2)
+    def matching_loss(self, disp_list: list, disp_label: torch.Tensor,
+                      mask_disp: torch.Tensor, udc: bool) -> torch.Tensor:
+        args = self.__arg
         res = []
-        match_out_dict = disp_list[0]
+        gt_distribute = self._disp2distribute(args.start_disp, disp_label, args.disp_num, b=2)
 
-        loss_dict = self.prob_loss(
-            prob=match_out_dict["prob"],
-            prob1=match_out_dict["aux"]["prob1"],
-            disp_gt_full=disp_label,                  # [B,1,H,W], FULL-RES 像素
-            mask_full=mask_disp,
-            orig_hw=(disp_label.shape[-2], disp_label.shape[-1]),
-            H4W4=(match_out_dict["prob"].shape[-2], match_out_dict["prob"].shape[-1]),
-            D=match_out_dict["prob"].shape[1],
-            band_dmin=match_out_dict["band"][0],                        # ✅ 推荐
-            band_offset_pixels=match_out_dict["band_offset_px"]         # 或者传 band_offset_pixels（full-res 像素）
-        )
+        loss_1 = 0.5 * F.smooth_l1_loss(disp_list[0][mask_disp], disp_label[mask_disp]) + \
+            0.7 * F.smooth_l1_loss(disp_list[1][mask_disp], disp_label[mask_disp]) + \
+            F.smooth_l1_loss(disp_list[2][mask_disp], disp_label[mask_disp])
 
-        loss_l1 = F.smooth_l1_loss(match_out_dict["disp_full"][mask_disp.unsqueeze(1)],
-                                   disp_label.unsqueeze(1)[mask_disp.unsqueeze(1)])
-
-        loss = loss_dict["loss"] + loss_l1
-        res.append(loss)
-        res.append(loss_dict["loss"])
-        res.append(loss_l1)
+        if udc:
+            loss_2 = 0.5 * self._celoss(
+                args.start_disp, disp_label, args.disp_num, gt_distribute, disp_list[3]) + \
+                0.7 * self._celoss(
+                    args.start_disp, disp_label, args.disp_num, gt_distribute, disp_list[4]) + \
+                self._celoss(
+                    args.start_disp, disp_label, args.disp_num, gt_distribute, disp_list[5])
+            loss_3 = F.smooth_l1_loss(disp_list[8][mask_disp], disp_label[mask_disp])
+            res.append(loss_1 + loss_2 + loss_3)
+            res.append(loss_2)
+            res.append(loss_3)
+        res.append(loss_1)
+        res.append(torch.mean(disp_list[7]))
         return res
 
     def feature_alignment_loss(self, left_feat: torch.Tensor, right_feat: torch.Tensor,
@@ -97,5 +101,6 @@ class Loss(object):
         right_feat = F.interpolate(right_feat, [h, w], mode = 'bilinear', align_corners = False)
 
         alignment_loss = self._alignment_loss(left_feat, right_feat, disp_label, mask_disp)
+        matching_loss = self._feature_matching_loss(left_feat, right_feat, disp_label, mask_disp)
 
-        return [alignment_loss, alignment_loss]
+        return [alignment_loss + matching_loss, alignment_loss, matching_loss]

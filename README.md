@@ -1,300 +1,198 @@
-# Template-jf
-[![Use the JackFramework Demo](https://github.com/Archaic-Atom/FrameworkTemplate/actions/workflows/build_env.yml/badge.svg?event=push)](https://github.com/Archaic-Atom/FrameworkTemplate/actions/workflows/build_env.yml)
-![Python 3.8](https://img.shields.io/badge/python-3.8-green.svg?style=plastic)
-![Pytorch 1.7](https://img.shields.io/badge/PyTorch%20-%23EE4C2C.svg?style=plastic)
-![cuDnn 7.3.6](https://img.shields.io/badge/cudnn-7.3.6-green.svg?style=plastic)
-![License MIT](https://img.shields.io/badge/license-MIT-green.svg?style=plastic)
+# SSPGNet — Sparse Self-Prompt Guided Stereo Matching
 
->This is template project for JackFramework (https://github.com/Archaic-Atom/JackFramework). **It is used to rapidly build the model, without caring about the training process (such as DDP or DP, Tensorboard, et al.)**
+[![License MIT](https://img.shields.io/badge/license-MIT-green.svg?style=plastic)](./LICENSE)
+![Python 3.8+](https://img.shields.io/badge/python-3.8+-green.svg?style=plastic)
+![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=plastic)
 
-Document：https://www.wolai.com/archaic-atom/rqKJVi7M1x44mPT8CdM1TL
+Official PyTorch implementation of the paper:
 
-Demo Project: https://github.com/Archaic-Atom/Demo-jf
+> **Sparse Self-Prompt Guided Stereo Matching for Real-World Generalization**
+> *Sensors*, 2026.
+
+SSPGNet is a domain-generalized stereo-matching network whose core mechanism is a *sparse self-prompt*: a confidence-thresholded sparse disparity map, self-estimated from vision-foundation-model (DINOv2 / DepthAnything v2) features via cost aggregation, is then refined into a dense disparity map through cross-attention-based sparse-to-dense propagation. Under the SceneFlow → {KITTI, Middlebury, ETH3D} zero-shot protocol, SSPGNet attains bad-pixel rates of **3.6 % / 4.4 % / 7.6 % / 2.1 %**, ranking first on three of the four benchmarks.
+
+> **Note.** The internal code name of this model is `StereoA` (kept for backward compatibility with the JackFramework training scripts).
 
 ---
-### Software Environment
-1. OS Environment
-```
-os >= linux 16.04
-cudaToolKit == 10.1
-cudnn == 7.3.6
-```
 
-2. Python Environment (We provide the whole env in )
-```
-python >= 3.8.5
-pythorch >= 1.15.0
-numpy >= 1.14.5
-opencv >= 3.4.0
-PIL >= 5.1.0
-```
+## Highlights
+
+- **Sparse self-prompt mechanism** — confidence-thresholded sparse disparity, self-estimated from VFM features, used as a guidance prompt rather than the final output.
+- **Sparse-to-dense propagation** — cross-attention-based stereo feature interaction (`Source/UserModelImplementation/Models/StereoA/Networks/_prompt.py`) progressively refines the prompt into a dense disparity.
+- **Frozen foundation backbone** — the DINOv2 / DepthAnything v2 ViT-L/14 backbone is *frozen* throughout training; only **9.01 M** trainable parameters are updated.
+- **Strong cross-domain generalization** — best peak performance on KITTI 2012 / KITTI 2015 / ETH3D (rank 1) and second-best on Middlebury (rank 2) under SceneFlow-only training.
+- **In-the-wild evaluation** — qualitative results on real-world stereo pairs captured with a ZED 2 camera.
+
 ---
-### Hardware Environment
-The framework only can be used in GPUs.
 
-### Train the model by running:
-0. Install the JackFramework lib from Github (https://github.com/Archaic-Atom/JackFramework)
-```
-$ cd JackFramework/
-$ ./install.sh
-```
-
-1. Get the Training list or Testing list （You need rewrite the code by your path, and my related demo code can be found in Source/Tools/genrate_**_traning_path.py）
-```
-$ ./GenPath.sh
-DatasetListGenerator --dataset ETH3D --dataset_folder_path /data3/datasets/ETH/  --save_folder_path ./Datasets/
-DatasetListGenerator --dataset Middlebury --dataset_folder_path /data3/datasets/Middlebury/MiddEval3/  --save_folder_path ./Datasets/
-DatasetListGenerator --dataset KITTI2012 --dataset_folder_path /data3/datasets/Kitti2012  --save_folder_path ./Datasets/
-DatasetListGenerator --dataset KITTI2015 --dataset_folder_path /data3/datasets/Kitti  --save_folder_path ./Datasets/
-```
-Please check the path. The source code in Source/Tools.
-
-2. Implement the model's interface and dataloader's interface of JackFramework in Source/UserModelImplementation/Models/your_model/inference.py and Source/UserModelImplementation/Dataloaders/your_dataloader.py.
-
-The template of model is shown in follows:
-```python
-# -*- coding: utf-8 -*-
-# import torch
-# import torch.nn as nn
-# import torch.nn.functional as F
-# import torch.optim as optim
-
-import JackFramework as jf
-# import UserModelImplementation.user_define as user_def
-
-
-class YourModelInterface(jf.UserTemplate.ModelHandlerTemplate):
-    """docstring for DeepLabV3Plus"""
-
-    def __init__(self, args: object) -> object:
-        super().__init__(args)
-        self.__args = args
-
-    def get_model(self) -> list:
-        # args = self.__args
-        # return model
-        return []
-
-    def optimizer(self, model: list, lr: float) -> list:
-        # args = self.__args
-        # return opt and sch
-        return [], []
-
-    def lr_scheduler(self, sch: object, ave_loss: list, sch_id: int) -> None:
-        # how to do schenduler
-        pass
-
-    def inference(self, model: list, input_data: list, model_id: int) -> list:
-        # args = self.__args
-        # return output
-        return []
-
-    def accuary(self, output_data: list, label_data: list, model_id: int) -> list:
-        # return acc
-        # args = self.__args
-        return []
-
-    def loss(self, output_data: list, label_data: list, model_id: int) -> list:
-        # return loss
-        # args = self.__args
-        return []
-
-    # Optional
-    def pretreatment(self, epoch: int, rank: object) -> None:
-        # do something before training epoch
-        pass
-
-    # Optional
-    def postprocess(self, epoch: int, rank: object,
-                    ave_tower_loss: list, ave_tower_acc: list) -> None:
-        # do something after training epoch
-        pass
-
-    # Optional
-    def load_model(self, model: object, checkpoint: dict, model_id: int) -> bool:
-        # return False
-        return False
-
-    # Optional
-    def load_opt(self, opt: object, checkpoint: dict, model_id: int) -> bool:
-        # return False
-        return False
-
-    # Optional
-    def save_model(self, epoch: int, model_list: list, opt_list: list) -> dict:
-        # return None
-        return None
+## Repository Layout
 
 ```
-
-The template of Dataloader is shown in follows:
-```python
-# -*- coding: utf-8 -*-
-import time
-import JackFramework as jf
-# import UserModelImplementation.user_define as user_def
-
-
-class YourDataloader(jf.UserTemplate.DataHandlerTemplate):
-    """docstring for DataHandlerTemplate"""
-
-    def __init__(self, args: object) -> object:
-        super().__init__(args)
-        self.__args = args
-        self.__result_str = jf.ResultStr()
-        self.__train_dataset = None
-        self.__val_dataset = None
-        self.__imgs_num = 0
-        self.__start_time = 0
-
-    def get_train_dataset(self, path: str, is_training: bool = True) -> object:
-        # args = self.__args
-        # return dataset
-        return None
-
-    def get_val_dataset(self, path: str) -> object:
-        # return dataset
-        # args = self.__args
-        # return dataset
-        return None
-
-    def split_data(self, batch_data: tuple, is_training: bool) -> list:
-        self.__start_time = time.time()
-        if is_training:
-            # return input_data_list, label_data_list
-            return [], []
-            # return input_data, supplement
-        return [], []
-
-    def show_train_result(self, epoch: int, loss:
-                          list, acc: list,
-                          duration: float) -> None:
-        assert len(loss) == len(acc)  # same model number
-        info_str = self.__result_str.training_result_str(epoch, loss[0], acc[0], duration, True)
-        jf.log.info(info_str)
-
-    def show_val_result(self, epoch: int, loss:
-                        list, acc: list,
-                        duration: float) -> None:
-        assert len(loss) == len(acc)  # same model number
-        info_str = self.__result_str.training_result_str(epoch, loss[0], acc[0], duration, False)
-        jf.log.info(info_str)
-
-    def save_result(self, output_data: list, supplement: list,
-                    img_id: int, model_id: int) -> None:
-        assert self.__train_dataset is not None
-        # args = self.__args
-        # save method
-        pass
-
-    def show_intermediate_result(self, epoch: int,
-                                 loss: list, acc: list) -> str:
-        assert len(loss) == len(acc)  # same model number
-        return self.__result_str.training_intermediate_result(epoch, loss[0], acc[0])
-
-
-```
-
-you must implement the related class for using JackFramework, the demo can be find in Source/UserModelImplementation/Models/Your_Model/inference.py or Source/UserModelImplementation/Dataloaders/your_dataloader.py. Or you can find the other demo in Demo project.
-
-Next, you need implement the interface file Source/user_interface.py (you can add some parameters in user\_parser function of this file ), as shown in follows:
-```python
-# -*- coding: utf-8 -*-
-import argparse
-import JackFramework as jf
-# import UserModelImplementation.user_define as user_def
-
-# model and dataloader
-from UserModelImplementation import Models
-from UserModelImplementation import Dataloaders
-
-
-class UserInterface(jf.UserTemplate.NetWorkInferenceTemplate):
-    """docstring for UserInterface"""
-
-    def __init__(self) -> object:
-        super().__init__()
-
-    def inference(self, args: object) -> object:
-        dataloader = Dataloaders.dataloaders_zoo(args, args.dataset)
-        model = Models.model_zoo(args, args.modelName)
-        return model, dataloader
-
-    def user_parser(self, parser: object) -> object:
-        # parser.add_argument('--startDisp', type=int, default=user_def.START_DISP,
-        #                    help='start disparity')
-        # return parser
-        return None
-
-    @staticmethod
-    def __str2bool(arg: str) -> bool:
-        if arg.lower() in ('yes', 'true', 't', 'y', '1'):
-            return True
-        elif arg.lower() in ('no', 'false', 'f', 'n', '0'):
-            return False
-        else:
-            raise argparse.ArgumentTypeError('Boolean value expected.')
-```
-
-Finally, you need pass this object to JackFramework, as shown in follows:
-```python
-# -*coding: utf-8 -*-
-import JackFramework as jf
-from UserModelImplementation.user_interface import UserInterface
-
-
-def main()->None:
-    app = jf.Application(UserInterface(), "Stereo Matching Models")
-    app.start()
-
-
-# execute the main function
-if __name__ == "__main__":
-    main()
-
-```
-
-3. Run the program, like:
-```
-$ ./Scripts/start_debug_stereo_net.sh
-```
----
-### File Structure
-```
-Template-jf
-├── Datasets # Get it by ./generate_path.sh, you need build folder
-│   ├── dataset_example_training_list.csv
-│   └── ...
-├── Scripts # Get it by ./generate_path.sh, you need build folder
-│   ├── clean.sh         # clean the project
-│   ├── generate_path.sh # generate the tranining or testing list like kitti2015_val_list
-│   ├── start_train_dataset_model.sh # start training command
-│   └── ...
-├── Source # source code
-│   ├── UserModelImplementation
-│   │   ├── Models            # any models in this folder
-│   │   ├── Dataloaders       # any dataloaders in this folder
-│   │   ├── user_define.py    # any global variable in this fi
-│   │   └── user_interface.py # to use model and Dataloader
-│   ├── Tools # put some tools in this folder
-│   ├── main.py
-│   └── ...
+SSPGNet/
+├── Source/
+│   ├── main.py                                # entry point
+│   ├── UserModelImplementation/
+│   │   ├── Models/StereoA/                    # SSPGNet model code
+│   │   │   ├── Networks/
+│   │   │   │   ├── model.py                   # top-level network
+│   │   │   │   ├── _feature_extraction.py     # VFM features (Stage 1) + transform (Stage 2)
+│   │   │   │   ├── _cost_volume.py            # cost volume (Stage 3)
+│   │   │   │   ├── _feature_matching.py       # 3D-hourglass aggregation (Stage 4)
+│   │   │   │   └── _prompt.py                 # sparse prompt module (Stage 5, the novelty)
+│   │   │   ├── _loss.py                       # smooth-L1 + multi-modal cross-entropy
+│   │   │   └── _accuracy.py
+│   │   └── Dataloaders/                       # SceneFlow / CreStereo / KITTI / MB / ETH3D loaders
+│   ├── Libs/                                  # GANet & sync_bn CUDA extensions
+│   └── Tools/                                 # dataset-list generation, evaluation
+├── Scripts/                                   # train / test bash scripts
+├── Datasets/                                  # CSV training / testing lists (generated)
+├── Weights/                                   # released checkpoints (download separately)
+├── profile_sspgnet.py                         # parameter / FLOPs / latency profiler
 ├── LICENSE
 └── README.md
 ```
+
 ---
-### Update log
-#### 2021-05-29
-1. Add the depth for transformer;
-2. Fork the JackFramework to a new project;
-3. Remove the JackFramework from this project.
 
-#### 2021-04-08
-1. Add the stereo;
-2. Add transformer.
+## Environment
 
-#### 2021-01-13
-1. Fork a new prject (based on pythorch);
-2. Use a new code style;
-3. Build the frameworks for pythorch;
-4. Write ReadMe
+```
+OS:       Ubuntu 18.04 / 20.04
+Python:   3.8.5+
+PyTorch:  1.15.0+
+CUDA:     compatible with the installed PyTorch
+```
+
+Install [JackFramework](https://github.com/Archaic-Atom/JackFramework) (training/eval harness):
+
+```bash
+git clone https://github.com/Archaic-Atom/JackFramework.git
+cd JackFramework && ./install.sh
+```
+
+Compile the GANet / SyncBN CUDA extensions:
+
+```bash
+cd Source/Libs/GANet  && python setup.py build && cp -r build/lib* build/lib
+cd ../sync_bn         && python setup.py build && cp -r build/lib* build/lib
+```
+
+---
+
+## Datasets
+
+Generate per-dataset CSV lists into `./Datasets/`:
+
+```bash
+DatasetListGenerator --dataset SceneFlow   --dataset_folder_path /path/to/SceneFlow/   --save_folder_path ./Datasets/
+DatasetListGenerator --dataset CreStereo   --dataset_folder_path /path/to/CreStereo/   --save_folder_path ./Datasets/
+DatasetListGenerator --dataset KITTI2012   --dataset_folder_path /path/to/Kitti2012/   --save_folder_path ./Datasets/
+DatasetListGenerator --dataset KITTI2015   --dataset_folder_path /path/to/Kitti2015/   --save_folder_path ./Datasets/
+DatasetListGenerator --dataset Middlebury  --dataset_folder_path /path/to/Middlebury/  --save_folder_path ./Datasets/
+DatasetListGenerator --dataset ETH3D       --dataset_folder_path /path/to/ETH3D/       --save_folder_path ./Datasets/
+```
+
+---
+
+## Training
+
+Pre-training on SceneFlow or CreStereo:
+
+```bash
+# SceneFlow
+./Scripts/start_train_dataset_model.sh
+
+# CreStereo (recommended for cross-domain results in Table 5)
+./Scripts/start_pre_train_dataset_model.sh
+```
+
+Hyperparameters (see Section 3.2 + Supplementary A of the paper):
+
+| Hyperparameter | Value |
+| --- | --- |
+| Maximum disparity D | 196 |
+| Foundation-model layer indices | {4, 11, 17, 23} |
+| Patch size p (ViT-L/14) | 14 |
+| Confidence threshold t (train / test) | 0.10 / 0.15 |
+| Number of Laplacian components K | default of [Xu et al. 2024] |
+| Affinity matrix channels | 8 (= 3×3 − 1, CSPN-style) |
+| Optimizer | Adam (β₁ = 0.9, β₂ = 0.999) |
+| Learning rate | 1 × 10⁻³ for 50 epochs, then 1 × 10⁻⁴ for 10 epochs |
+| Batch size | 3 per GPU (×6 GPUs = 18) |
+| Random crop | 518 × 266 |
+
+---
+
+## Cross-Domain Evaluation (Zero-Shot)
+
+The pre-trained model is evaluated directly on the four target benchmarks without any fine-tuning:
+
+```bash
+./Scripts/start_test_kitti12_dataset_model.sh
+./Scripts/start_test_kitti15_dataset_model.sh
+./Scripts/start_test_middlebury_dataset_model.sh
+./Scripts/start_test_eth3d_dataset_model.sh
+```
+
+Reproducing the numbers reported in **Table 5** of the paper (CreStereo-pre-trained):
+
+| Benchmark | Threshold | SSPGNet | Rank |
+| --- | --- | --- | --- |
+| KITTI 2012 | > 3 px | **3.6 %** | 1 |
+| KITTI 2015 | > 3 px | **4.4 %** | 1 |
+| Middlebury | > 2 px |   7.6 %   | 2 |
+| ETH3D      | > 1 px | **2.1 %** | 1 |
+
+---
+
+## Computational Profile
+
+`profile_sspgnet.py` profiles parameter count, FLOPs, and wall-clock latency:
+
+```bash
+pip install thop
+python profile_sspgnet.py
+```
+
+On a single NVIDIA RTX 3090 at the KITTI input envelope (378 × 1246):
+
+| Metric | Value |
+| --- | --- |
+| Total parameters | 313.38 M |
+| ↳ frozen (DINOv2 ViT-L/14) | 304.37 M |
+| ↳ trainable | 9.01 M |
+| FLOPs / forward | 2.92 T |
+| Latency / pair (avg of 10 runs, 3 warm-up) | 0.609 s |
+
+---
+
+## Pre-trained Weights
+
+Pre-trained SSPGNet checkpoints (SceneFlow and CreStereo variants) used to obtain the cross-domain numbers above will be released alongside this repository. See the [Releases](https://github.com/Archaic-Atom/SSPSNet/releases) page.
+
+---
+
+## Citation
+
+If this work is useful for your research, please cite:
+
+```bibtex
+@article{li2026sspgnet,
+  title   = {Sparse Self-Prompt Guided Stereo Matching for Real-World Generalization},
+  author  = {Li, Hangbiao and Mo, Haojun and Li, Xing and Fang, Tao and Liu, Sikun and Yu, Shuzhen and Rao, Zhibo},
+  journal = {Sensors},
+  year    = {2026},
+}
+```
+
+---
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
+
+---
+
+## Acknowledgements
+
+This codebase builds on [JackFramework](https://github.com/Archaic-Atom/JackFramework) and uses the DINOv2 / DepthAnything v2 vision foundation models from Meta AI as frozen feature extractors. We thank the authors of CFNet, GA-Net, NMRF, and Mask-CFNet for releasing reference implementations that informed our design.

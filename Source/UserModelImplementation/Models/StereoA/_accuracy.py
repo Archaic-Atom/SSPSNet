@@ -25,9 +25,12 @@ class Accuracy(object):
                           id_error_px: int = 1, invalid_value: int = 0) -> list:
         res = []
         for _, disp in enumerate(disp_list):
-            if len(disp.shape) == self.DISP_DIM_LEN:
-                acc, mae = jf.acc.SMAccuracy.d_1(disp, disp_label, invalid_value)
-                res.extend((acc[id_error_px], mae))
+            if len(disp_label.shape) == self.DISP_DIM_LEN:
+                disp_label = disp_label.unsqueeze(self.ID_CHANNEL)
+
+            assert disp_label.shape == disp.shape
+            acc, mae = jf.acc.SMAccuracy.d_1(disp, disp_label, invalid_value)
+            res.extend((acc[id_error_px], mae))
         return res
 
     def feature_alignment_accuracy(self, left_feat: torch.Tensor, right_feat: torch.Tensor,
